@@ -20,7 +20,7 @@ It classifies every outbound connection by destination country, flags anything l
 
 ## Dashboard Screenshots
 
-> All views shown with demo data. The Damovo brand theme is applied throughout.
+> **Note:** Screenshots show demo data. Country fields display `—` because geo-enrichment requires a [MaxMind GeoLite2-Country](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database (`GeoLite2-Country.mmdb`), which is not distributed with SchengenWatch due to MaxMind's licensing terms. See [Obtaining GeoLite2-Country.mmdb](#obtaining-geolite2-countrymmmdb) for setup instructions. With the MMDB in place, all country columns, EU/non-EU classification, and watch-list matching resolve correctly.
 
 ### Sovereignty Overview
 
