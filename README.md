@@ -280,7 +280,41 @@ set system syslog host <SENTINEL_IP> port 514
 | GET | `/api/countries/list` | All countries seen in traffic |
 | GET | `/api/settings/watch` | Current watch countries |
 | POST | `/api/settings/watch` | Update watch countries `{"countries":["RU","CN"]}` |
+| POST | `/api/ingest/pcap` | Upload a `.pcap` / `.pcapng` file, extract flows |
 | GET | `/api/db/seed?n=300` | Inject demo data (dev only) |
+
+---
+
+## PCAP Ingestion
+
+Upload a previously captured `.pcap` or `.pcapng` file and Sentinel will extract all TCP/UDP flows and insert them into the traffic database — geo-classified and immediately visible in the dashboard.
+
+```bash
+# Place your pcap in the pcaps/ directory (excluded from git)
+cp ~/Downloads/capture.pcap ./pcaps/
+
+# Upload via curl
+curl -X POST http://localhost:8000/api/ingest/pcap \
+     -F "file=@./pcaps/capture.pcap"
+```
+
+Example response:
+
+```json
+{
+  "filename": "capture.pcap",
+  "bytes_received": 2048576,
+  "flows_extracted": 1423,
+  "flows_written": 1423,
+  "message": "Successfully ingested 1423 unique flows"
+}
+```
+
+Supported formats: `.pcap` (libpcap), `.pcapng` (next-generation pcap), `.cap`.
+
+Flows are deduplicated on ingest — if a flow already exists in the database from syslog or NetFlow, its `last_seen` timestamp and `count` are updated rather than creating a duplicate.
+
+PCAP files are excluded from git via `.gitignore` — they may contain sensitive traffic data and should never be committed to the repository.
 
 ---
 
@@ -372,6 +406,7 @@ perimeter-sentinel/
 ├── netflow/
 │   ├── Dockerfile                 ← Python 3.12 Alpine
 │   └── collector.py               ← NetFlow v5/v9/IPFIX UDP listener
+├── pcaps/                         ← drop .pcap files here (git-ignored)
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt

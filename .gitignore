@@ -37,3 +37,8 @@ build/
 
 # Logs
 *.log
+
+# PCAP files — may contain sensitive traffic data, never commit
+*.pcap
+*.pcapng
+*.cap

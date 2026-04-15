@@ -15,6 +15,7 @@ Serves the dashboard API:
   POST /api/settings/watch         — update watch country list
   GET  /api/settings/watch         — retrieve watch country list
   GET  /api/health                 — liveness probe
+  POST /api/ingest/pcap             — upload .pcap/.pcapng, extract flows
   GET  /api/db/seed                — (dev) inject synthetic traffic rows
 """
 
@@ -363,3 +364,164 @@ def seed_db(n: int = Query(200, le=2000)):
 # ── Serve dashboard static files ────────────────────────────────────────────
 if Path(STATIC_DIR).exists():
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+
+# ── PCAP Ingestor ────────────────────────────────────────────────────────────
+import io
+import socket as _socket
+import struct as _struct
+import dpkt
+
+from fastapi import UploadFile, File, BackgroundTasks
+
+def _int_to_ip(n: int) -> str:
+    return _socket.inet_ntoa(_struct.pack("!I", n))
+
+def _parse_pcap(data: bytes) -> list[dict]:
+    """
+    Parse a pcap (or pcapng) byte buffer.
+    Extract TCP/UDP flows — src_ip, dst_ip, dst_port, protocol.
+    Drops private-to-private flows and non-TCP/UDP packets.
+    Returns a deduplicated list of flow dicts.
+    """
+    import ipaddress
+
+    def is_private(ip: str) -> bool:
+        try:
+            return ipaddress.ip_address(ip).is_private
+        except ValueError:
+            return True
+
+    flows: dict[tuple, dict] = {}
+
+    try:
+        # Try standard pcap first, fall back to pcapng
+        try:
+            reader = dpkt.pcap.Reader(io.BytesIO(data))
+        except Exception:
+            reader = dpkt.pcapng.Reader(io.BytesIO(data))
+
+        for _ts, buf in reader:
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+            except Exception:
+                continue
+
+            if not isinstance(eth.data, dpkt.ip.IP):
+                continue
+
+            ip = eth.data
+            proto_num = ip.p
+
+            if proto_num == dpkt.ip.IP_PROTO_TCP:
+                proto = "TCP"
+                transport = ip.data
+                if not isinstance(transport, dpkt.tcp.TCP):
+                    continue
+                dst_port = transport.dport
+            elif proto_num == dpkt.ip.IP_PROTO_UDP:
+                proto = "UDP"
+                transport = ip.data
+                if not isinstance(transport, dpkt.udp.UDP):
+                    continue
+                dst_port = transport.dport
+            else:
+                continue
+
+            src_ip = _int_to_ip(ip.src)
+            dst_ip = _int_to_ip(ip.dst)
+
+            if not (1 <= dst_port <= 65535):
+                continue
+            if is_private(src_ip) and is_private(dst_ip):
+                continue
+
+            key = (src_ip, dst_ip, dst_port, proto)
+            if key not in flows:
+                flows[key] = {
+                    "src_ip":   src_ip,
+                    "dst_ip":   dst_ip,
+                    "dst_port": dst_port,
+                    "protocol": proto,
+                }
+
+    except Exception as exc:
+        raise ValueError(f"Could not parse pcap: {exc}") from exc
+
+    return list(flows.values())
+
+
+def _ingest_flows(conn: sqlite3.Connection, flows: list[dict]) -> int:
+    """Write parsed pcap flows into SQLite using the standard upsert."""
+    now  = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    rows = [
+        (
+            str(uuid.uuid4()),
+            f["src_ip"],
+            f["dst_ip"],
+            f["dst_port"],
+            f["protocol"],
+            now,
+            now,
+        )
+        for f in flows
+    ]
+    upsert = """
+        INSERT INTO traffic (id, src_ip, dst_ip, dst_port, protocol, first_seen, last_seen, count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        ON CONFLICT (src_ip, dst_ip, dst_port, protocol) DO UPDATE SET
+            last_seen = excluded.last_seen,
+            count     = count + 1
+    """
+    with conn:
+        conn.executemany(upsert, rows)
+    return len(rows)
+
+
+@app.post("/api/ingest/pcap")
+async def ingest_pcap(file: UploadFile = File(...)):
+    """
+    Upload a .pcap or .pcapng file.
+    Extracts all TCP/UDP flows and upserts them into the traffic database.
+
+    curl -X POST http://localhost:8000/api/ingest/pcap \
+         -F "file=@/path/to/capture.pcap"
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    ext = file.filename.lower().rsplit(".", 1)[-1]
+    if ext not in ("pcap", "pcapng", "cap"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '.{ext}'. Send a .pcap or .pcapng file.",
+        )
+
+    data = await file.read()
+    if len(data) < 24:
+        raise HTTPException(status_code=400, detail="File too small to be a valid pcap")
+
+    try:
+        flows = _parse_pcap(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if not flows:
+        return {
+            "filename":    file.filename,
+            "packets_parsed": 0,
+            "flows_written":  0,
+            "message": "No TCP/UDP flows with at least one public IP found in this pcap",
+        }
+
+    conn   = get_conn()
+    written = _ingest_flows(conn, flows)
+    conn.close()
+
+    return {
+        "filename":       file.filename,
+        "bytes_received": len(data),
+        "flows_extracted": len(flows),
+        "flows_written":   written,
+        "message":        f"Successfully ingested {written} unique flows",
+    }
