@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Perimeter Sentinel — Traffic Intelligence</title>
-  <meta name="description" content="Real-time perimeter traffic geo-intelligence dashboard. Monitor EU, non-EU, and watch-country communications." />
+  <title>EuroGate — EU Data Sovereignty Validator</title>
+  <meta name="description" content="Open-source EU data sovereignty validator. Continuous visibility into whether your network traffic respects jurisdictional boundaries." />
 
   <!-- Fonts: Cabinet Grotesk (display) + Satoshi (body) from Fontshare -->
   <link
@@ -29,7 +29,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <!-- SVG Logo: shield + crosshair -->
-      <svg aria-label="Perimeter Sentinel" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-mark">
+      <svg aria-label="EuroGate" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-mark">
         <path d="M20 3L5 9V20C5 28.284 11.716 35 20 37C28.284 35 35 28.284 35 20V9L20 3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         <circle cx="20" cy="20" r="6" stroke="var(--accent)" stroke-width="2"/>
         <line x1="20" y1="9" x2="20" y2="13" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
@@ -37,7 +37,7 @@
         <line x1="9" y1="20" x2="13" y2="20" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="27" y1="20" x2="31" y2="20" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      <span class="logo-text">Sentinel</span>
+      <span class="logo-text">EuroGate</span>
     </div>
 
     <nav class="sidebar-nav">
@@ -55,11 +55,11 @@
       </button>
       <button class="nav-item" data-view="non-eu">
         <i data-lucide="globe"></i>
-        <span>Non-EU Traffic</span>
+        <span>Non-EU Alerts</span>
       </button>
       <button class="nav-item" data-view="watch">
         <i data-lucide="shield-alert"></i>
-        <span>Watch Countries</span>
+        <span>Watch List</span>
         <span class="badge-watch" id="watch-badge">0</span>
       </button>
       <button class="nav-item" data-view="recent">
@@ -111,8 +111,8 @@
       <!-- ── VIEW: OVERVIEW ── -->
       <section class="view active" id="view-overview">
         <div class="view-header">
-          <h1>Traffic Overview</h1>
-          <p class="view-sub">All perimeter flows, geo-classified by destination</p>
+          <h1>Sovereignty Overview</h1>
+          <p class="view-sub">Real-time classification of outbound traffic by jurisdiction</p>
         </div>
 
         <!-- KPI row -->
@@ -123,17 +123,17 @@
             <div class="kpi-sub" id="kpi-total-comms">— communications</div>
           </div>
           <div class="kpi-card kpi-eu" data-testid="kpi-eu">
-            <div class="kpi-label">EU Destinations</div>
+            <div class="kpi-label">Within EU</div>
             <div class="kpi-value" id="kpi-eu-flows">—</div>
             <div class="kpi-sub" id="kpi-eu-comms">— communications</div>
           </div>
-          <div class="kpi-card kpi-noneu" data-testid="kpi-noneu">
-            <div class="kpi-label">Non-EU Destinations</div>
+          <div class="kpi-card kpi-noneu kpi-alert" data-testid="kpi-noneu">
+            <div class="kpi-label">Outside EU ⚠</div>
             <div class="kpi-value" id="kpi-noneu-flows">—</div>
             <div class="kpi-sub" id="kpi-noneu-comms">— communications</div>
           </div>
           <div class="kpi-card kpi-watch" data-testid="kpi-watch">
-            <div class="kpi-label">Watch Country Hits</div>
+            <div class="kpi-label">Watch List Hits 🚨</div>
             <div class="kpi-value" id="kpi-watch-flows">—</div>
             <div class="kpi-sub" id="kpi-watch-comms">— communications</div>
           </div>
@@ -232,7 +232,7 @@
       <section class="view" id="view-eu">
         <div class="view-header">
           <h1>EU Traffic</h1>
-          <p class="view-sub">Flows terminating within European Union member states</p>
+          <p class="view-sub">Flows terminating within EU member states — compliant under GDPR adequacy</p>
         </div>
         <div class="kpi-grid mini">
           <div class="kpi-card kpi-eu">
@@ -277,9 +277,13 @@
 
       <!-- ── VIEW: NON-EU TRAFFIC ── -->
       <section class="view" id="view-non-eu">
+        <div class="alert-bar alert-warn" id="noneu-alert" style="display:none">
+          <i data-lucide="alert-triangle"></i>
+          <span id="noneu-alert-text"></span>
+        </div>
         <div class="view-header">
-          <h1>Non-EU Traffic</h1>
-          <p class="view-sub">Flows terminating outside European Union member states</p>
+          <h1>Non-EU Alerts</h1>
+          <p class="view-sub">Flows crossing EU borders — review for GDPR Art. 44-49 compliance</p>
         </div>
         <div class="kpi-grid mini">
           <div class="kpi-card kpi-noneu">
@@ -325,8 +329,8 @@
       <!-- ── VIEW: WATCH COUNTRIES ── -->
       <section class="view" id="view-watch">
         <div class="view-header">
-          <h1>Watch Countries</h1>
-          <p class="view-sub">Flows terminating in user-defined high-interest countries</p>
+          <h1>Watch List</h1>
+          <p class="view-sub">Flows to jurisdictions requiring heightened scrutiny (Schrems II, DORA, NIS2)</p>
         </div>
         <div class="alert-bar alert-warn" id="watch-alert" style="display:none">
           <i data-lucide="shield-alert"></i>
@@ -374,7 +378,7 @@
       <section class="view" id="view-recent">
         <div class="view-header">
           <h1>Recent Flows</h1>
-          <p class="view-sub">Most recently seen connections across all categories</p>
+          <p class="view-sub">Live feed of all outbound connections, geo-classified</p>
         </div>
         <div class="table-card">
           <div class="table-header">
@@ -407,7 +411,7 @@
       <section class="view" id="view-settings">
         <div class="view-header">
           <h1>Settings</h1>
-          <p class="view-sub">Configure watch countries and API connection</p>
+          <p class="view-sub">Configure home country, watch list, and API connection</p>
         </div>
 
         <div class="settings-card">

@@ -84,11 +84,11 @@ $('#sidebar-toggle').addEventListener('click', () => {
 
 // ── Navigation ────────────────────────────────────────────────────────────
 const VIEWS = {
-  overview: 'Overview',
+  overview: 'Sovereignty Overview',
   country:  'By Country',
   eu:       'EU Traffic',
-  'non-eu': 'Non-EU Traffic',
-  watch:    'Watch Countries',
+  'non-eu': 'Non-EU Alerts',
+  watch:    'Watch List',
   recent:   'Recent Flows',
   settings: 'Settings',
 };
@@ -336,6 +336,19 @@ async function loadNonEU() {
     $('#noneu-unique').textContent = fmt(uniqueFlows);
     $('#noneu-comms').textContent  = fmt(totalComms);
     $('#noneu-table-meta').textContent = `${fmt(uniqueFlows)} flows`;
+
+    // Alert banner — non-EU traffic is the primary compliance concern in EuroGate
+    const alertBar  = $('#noneu-alert');
+    const alertText = $('#noneu-alert-text');
+    if (alertBar) {
+      if (uniqueFlows > 0) {
+        alertBar.style.display = 'flex';
+        alertText.textContent  = `${fmt(uniqueFlows)} flows detected outside the EU (${fmt(totalComms)} total communications). Review for GDPR Art. 44-49 compliance.`;
+      } else {
+        alertBar.style.display = 'none';
+      }
+      lucide.createIcons();
+    }
 
     const byCountry = aggregateByCountry(data.flows);
     chartNonEU = destroyChart(chartNonEU);

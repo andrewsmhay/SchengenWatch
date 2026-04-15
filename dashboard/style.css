@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   Perimeter Sentinel — Dashboard Stylesheet
+   EuroGate — EU Data Sovereignty Validator Stylesheet
    Palette: dark navy/slate cybersecurity aesthetic
    Fonts: Cabinet Grotesk (display) + Satoshi (body)
          + JetBrains Mono (IP/data values)
@@ -446,6 +446,16 @@ table { border-collapse: collapse; width: 100%; }
 .kpi-eu   { border-left: 3px solid var(--blue); }
 .kpi-noneu{ border-left: 3px solid var(--violet); }
 .kpi-watch{ border-left: 3px solid var(--warn); }
+
+/* Elevated alert state — used on the Non-EU KPI card */
+.kpi-alert {
+  border-color: color-mix(in srgb, var(--violet) 35%, var(--border));
+  background: color-mix(in srgb, var(--violet) 4%, var(--surface));
+}
+.kpi-alert:hover {
+  border-color: color-mix(in srgb, var(--violet) 55%, transparent);
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.12);
+}
 
 .kpi-label {
   font-size: var(--text-xs);

@@ -1,68 +1,83 @@
-# Perimeter Sentinel
+# EuroGate — EU Data Sovereignty Validator
 
-Real-time perimeter firewall traffic intelligence: geo-classification, SQLite persistence, and a modern SaaS dashboard — all in three lightweight containers.
+**Open-source network traffic validator for organisations operating under EU data sovereignty requirements.**
+
+EuroGate monitors outbound network communications in real time and alerts when traffic crosses EU borders — giving security, compliance, and legal teams continuous visibility into whether data flows respect jurisdictional boundaries required by GDPR, NIS2, DORA, and TISAX.
+
+---
+
+## Why EuroGate
+
+EU-based organisations face increasing regulatory pressure to demonstrate that data — and the network communications that carry it — remain within defined jurisdictions. Auditors ask. Regulators require it. Proving it has historically meant expensive SIEM deployments or manual log reviews.
+
+EuroGate is a lightweight, self-hosted alternative that answers one question continuously:
+
+> **Is our traffic staying where it should?**
+
+It classifies every outbound connection by destination country, flags anything leaving the EU, and highlights communications to specific high-interest jurisdictions. No data leaves your environment. No SaaS dependency. No per-seat licensing.
 
 ---
 
 ## Architecture
 
 ```
-Firewall/Router
-      │  syslog (UDP/TCP 514, TCP 601, TCP 6514)
+Firewall / Router
       │
-      │  NetFlow v5/v9/IPFIX (UDP 2055)
+      │  syslog  (UDP/TCP 514, TCP 601, TCP 6514)
+      │  NetFlow v5/v9/IPFIX  (UDP 2055)
+      │  PCAP upload  (HTTP POST /api/ingest/pcap)
       │
-      ├──────────────────────┬──────────────────────────┐
-      ▼                      ▼                          │
-┌─────────────┐    ┌─────────────────┐                  │
-│  syslog-ng  │    │  netflow        │                  │
-│  (Alpine)   │    │  (Python/Alpine)│                  │
-│  Parse logs │    │  v5/v9/IPFIX    │                  │
-│  Strip meta │    │  UDP collector  │                  │
-└──────┬──────┘    └────────┬────────┘                  │
-       │ JSONL              │ direct upsert             │
-       ▼                    │                           │
-┌──────────────────┐        │                           │
-│  processor       │        │                           │
-│  tail → SQLite   │◀───────┘                           │
-└──────────┬───────┘                                    │
-           │ /data/sentinel.db                          │
-           ▼                                            │
-┌──────────────────────────┐                            │
-│  backend                 │◀───────────────────────────┘
-│  FastAPI + GeoLite2      │
-│  REST API + static serve │
-│  http://localhost:8000   │
-└──────────────────────────┘
+      ├─────────────────────┬──────────────────────┐
+      ▼                     ▼                      │
+┌───────────┐    ┌──────────────────┐              │
+│ syslog-ng │    │ netflow          │              │
+│ (Alpine)  │    │ collector        │              │
+│ Parse +   │    │ v5/v9/IPFIX      │              │
+│ strip meta│    │ UDP listener     │              │
+└─────┬─────┘    └────────┬─────────┘              │
+      │ JSONL             │ direct upsert          │
+      ▼                   │                        │
+┌─────────────────┐       │                        │
+│ processor       │◀──────┘                        │
+│ tail → SQLite   │                                │
+└────────┬────────┘                                │
+         │ /data/eurogate.db                       │
+         ▼                                         │
+┌─────────────────────────┐                        │
+│ backend                 │◀───────────────────────┘
+│ FastAPI + GeoLite2      │
+│ REST API + dashboard    │
+│ http://localhost:8000   │
+└─────────────────────────┘
 ```
 
-### What syslog-ng strips
+---
 
-Every syslog field is discarded **except** the four fields below, which are emitted as a JSON line to a shared volume:
+## Data Sovereignty Views
 
-| Field      | Example             |
-|------------|---------------------|
-| `src_ip`   | `10.0.0.5`          |
-| `dst_ip`   | `185.220.101.1`     |
-| `dst_port` | `443`               |
-| `protocol` | `TCP`               |
+| View | Purpose |
+|---|---|
+| **Overview** | KPI summary — in-country, EU, non-EU, and watch-country flow counts |
+| **In-Country** | Flows staying within your home country (e.g. Germany only) |
+| **EU Traffic** | Flows within EU member states — compliant under GDPR adequacy |
+| **Non-EU Traffic** | Flows leaving the EU — primary compliance alert view |
+| **Watch Countries** | Flows to user-defined high-risk jurisdictions (e.g. CN, RU, US) |
+| **Recent Flows** | Live feed of the last 100 connections |
+| **Settings** | Configure home country, watch list, API endpoint |
 
-### SQLite schema
+---
 
-```sql
-CREATE TABLE traffic (
-    id         TEXT    PRIMARY KEY,   -- UUID v4
-    src_ip     TEXT    NOT NULL,
-    dst_ip     TEXT    NOT NULL,
-    dst_port   INTEGER NOT NULL,
-    protocol   TEXT    NOT NULL,      -- TCP | UDP
-    first_seen TEXT    NOT NULL,      -- ISO-8601 UTC
-    last_seen  TEXT    NOT NULL,      -- ISO-8601 UTC, updated on every hit
-    count      INTEGER NOT NULL DEFAULT 1
-);
--- Unique key: (src_ip, dst_ip, dst_port, protocol)
--- INSERT OR UPDATE increments count and refreshes last_seen
-```
+## Regulatory Context
+
+| Regulation | Relevance |
+|---|---|
+| **GDPR Art. 44-49** | Restricts personal data transfers outside the EEA without adequate safeguards |
+| **NIS2 Directive** | Requires operators of essential services to control and audit data flows |
+| **DORA (EU 2022/2554)** | Financial entities must demonstrate ICT supply chain and data residency controls |
+| **TISAX** | Automotive industry information security — data localisation is assessed |
+| **Schrems II** | Invalidated Privacy Shield; transfers to US require explicit legal basis |
+
+EuroGate does not replace legal advice or a formal Data Protection Impact Assessment. It provides the continuous technical evidence that supports those processes.
 
 ---
 
@@ -72,7 +87,7 @@ CREATE TABLE traffic (
 |---|---|
 | Docker Engine ≥ 24 | Compose v2 included |
 | MaxMind GeoLite2-Country.mmdb | Free — see below |
-| Firewall configured to send syslog | UDP 514 / TCP 514 / 601 |
+| Firewall configured to send syslog or NetFlow | UDP 514 / TCP 514 / UDP 2055 |
 
 ### Obtaining GeoLite2-Country.mmdb
 
@@ -82,8 +97,7 @@ CREATE TABLE traffic (
 
 ```bash
 mkdir -p mmdb
-# copy your downloaded file:
-cp ~/Downloads/GeoLite2-Country.mmdb mmdb/
+cp ~/Downloads/GeoLite2-Country_*/GeoLite2-Country.mmdb mmdb/
 ```
 
 ---
@@ -91,8 +105,8 @@ cp ~/Downloads/GeoLite2-Country.mmdb mmdb/
 ## Quick Start
 
 ```bash
-git clone <this-repo>
-cd perimeter-sentinel
+git clone https://github.com/andrewsmhay/eurogate.git
+cd eurogate
 
 # 1. Add your MaxMind database
 mkdir -p mmdb
@@ -104,163 +118,100 @@ docker compose up -d
 # 3. Open the dashboard
 open http://localhost:8000
 
-# 4. (Optional) inject demo data
-curl http://localhost:8000/api/db/seed?n=500
+# 4. Inject demo data (no firewall required)
+curl "http://localhost:8000/api/db/seed?n=500"
 ```
 
 ---
 
-## Pointing Your Firewall at Sentinel — NetFlow
+## Input Sources
 
-NetFlow is the preferred input method. It gives you byte counts, packet counts, and flow duration in addition to the 5-tuple, and most enterprise perimeter devices support it natively.
+### Syslog (UDP/TCP 514, TCP 601)
 
-### Cisco IOS / IOS-XE (NetFlow v9)
+Supported firewall log formats:
 
+- **Cisco ASA / PIX / FTD** — Built/Teardown connection messages
+- **iptables / nftables** — `SRC= DST= PROTO= DPT=` format
+- **Palo Alto Networks** — CSV traffic log
+- **Generic key=value** — Fortinet, Check Point, pfSense, OPNsense, MikroTik
+
+**Cisco ASA:**
+```
+logging enable
+logging host inside <EUROGATE_IP> 514
+logging trap informational
+```
+
+**iptables:**
+```bash
+# /etc/rsyslog.d/99-eurogate.conf
+*.* @<EUROGATE_IP>:514
+```
+
+**pfSense / OPNsense:** Status > System Logs > Settings > Remote Logging > `<EUROGATE_IP>:514`
+
+---
+
+### NetFlow / IPFIX (UDP 2055)
+
+NetFlow provides richer data (byte counts, packet counts, flow duration) and is the preferred input for enterprise environments.
+
+**Cisco IOS / IOS-XE (v9):**
 ```
 ip flow-export version 9
-ip flow-export destination <SENTINEL_IP> 2055
-ip flow-export source GigabitEthernet0/0
-ip flow-cache timeout active 1
-ip flow-cache timeout inactive 15
-
+ip flow-export destination <EUROGATE_IP> 2055
 interface GigabitEthernet0/0
  ip flow ingress
  ip flow egress
 ```
 
-### Cisco ASA (NetFlow NSEL)
-
-```
-flow-export destination outside <SENTINEL_IP> 2055
-flow-export template timeout-rate 1
-flow-export delay flow-create 0
-
-policy-map global_policy
- class class-default
-  flow-export event-type all destination <SENTINEL_IP>
-```
-
-### Palo Alto Networks (IPFIX)
-
+**Palo Alto (IPFIX):**
 ```
 Device > Server Profiles > NetFlow
-  Name:        sentinel
-  Server:      <SENTINEL_IP>
-  Port:        2055
-  Version:     IPFIX
-  Active Timeout: 60
-
-Network > Interfaces > <your WAN interface>
-  NetFlow Profile: sentinel
+  Server: <EUROGATE_IP>  Port: 2055  Version: IPFIX
+Network > Interfaces > <WAN interface> > NetFlow Profile
 ```
 
-### Juniper SRX (v9)
-
-```
-set services flow-monitoring version9 template ipv4 flow-active-timeout 60
-set services flow-monitoring version9 template ipv4 flow-inactive-timeout 15
-set services flow-monitoring version9 template ipv4 template-id 100
-
-set forwarding-options sampling instance default input rate 1
-set forwarding-options sampling instance default family inet output flow-server <SENTINEL_IP> port 2055
-set forwarding-options sampling instance default family inet output flow-server <SENTINEL_IP> version9 template ipv4
-```
-
-### Fortinet FortiGate (v9)
-
+**Fortinet FortiGate (v9):**
 ```
 config system netflow
-  set collector-ip <SENTINEL_IP>
+  set collector-ip <EUROGATE_IP>
   set collector-port 2055
-  set source-ip <FORTIGATE_INTERFACE_IP>
-  set active-flow-timeout 60
-  set inactive-flow-timeout 15
 end
 ```
 
-### MikroTik RouterOS (v5)
-
+**MikroTik (v5):**
 ```
 /ip traffic-flow
-set enabled=yes interfaces=all active-flow-timeout=1m inactive-flow-timeout=15s
-
+set enabled=yes interfaces=all
 /ip traffic-flow target
-add dst-address=<SENTINEL_IP> port=2055 version=5
+add dst-address=<EUROGATE_IP> port=2055 version=5
 ```
 
-### Verify NetFlow is arriving
-
-```bash
-# Watch the collector logs live
-docker compose logs -f netflow
-
-# Check flows are hitting the database
-curl -s http://localhost:8000/api/recent?limit=5 | python3 -m json.tool
+**Juniper SRX (v9):**
+```
+set forwarding-options sampling instance default family inet \
+    output flow-server <EUROGATE_IP> port 2055 version9 template ipv4
 ```
 
 ---
 
-## Pointing Your Firewall at Sentinel — Syslog
+### PCAP Upload
 
-### Cisco ASA / FTD
-
-```
-logging enable
-logging host inside <SENTINEL_IP> 514
-logging trap informational
-logging facility 16
-```
-
-### iptables / nftables (Linux router)
+Upload a previously captured packet capture file and EuroGate will extract all TCP/UDP flows, geo-classify them, and add them to the database.
 
 ```bash
-# iptables — log and send to syslog (rsyslog then forwards to sentinel)
-iptables -A FORWARD -j LOG --log-prefix "PERIMETER: "
+# Place pcap in the pcaps/ directory (git-ignored)
+cp ~/Downloads/capture.pcap ./pcaps/
 
-# /etc/rsyslog.d/99-sentinel.conf
-*.* @<SENTINEL_IP>:514
+# Upload
+curl -X POST http://localhost:8000/api/ingest/pcap \
+     -F "file=@./pcaps/capture.pcap"
 ```
 
-### Palo Alto Networks
+Supported formats: `.pcap`, `.pcapng`, `.cap`
 
-```
-Device > Server Profiles > Syslog > Add
-  Syslog Server: <SENTINEL_IP>
-  Port: 514
-  Format: BSD
-
-Policies > Security > Log Forwarding Profile > Add
-  Log Type: traffic
-  Syslog Profile: <your profile>
-```
-
-### Juniper SRX
-
-```
-set system syslog host <SENTINEL_IP> any any
-set system syslog host <SENTINEL_IP> port 514
-```
-
-### pfSense / OPNsense
-
-`Status > System Logs > Settings`:
-- Remote Logging: ✓ Enable
-- Remote Log Server: `<SENTINEL_IP>:514`
-- Source Address: LAN interface
-
----
-
-## Dashboard Views
-
-| View | Description |
-|---|---|
-| **Overview** | KPI cards, category donut chart, top 10 countries bar, top endpoint table |
-| **By Country** | Select any observed country — view all flows to it |
-| **EU Traffic** | Flows to EU member states; per-country breakdown chart |
-| **Non-EU Traffic** | Flows outside EU; per-country breakdown chart |
-| **Watch Countries** | Alert view for user-defined high-interest countries (default: RU, CN, KP, IR) |
-| **Recent Flows** | Last 100 flows across all categories |
-| **Settings** | Add/remove watch countries; configure API endpoint |
+Flows are deduplicated — if a flow already exists from syslog or NetFlow, `last_seen` and `count` are updated.
 
 ---
 
@@ -270,9 +221,9 @@ set system syslog host <SENTINEL_IP> port 514
 |---|---|---|
 | GET | `/api/health` | Liveness probe (DB + MMDB status) |
 | GET | `/api/stats/summary` | All KPI counts |
-| GET | `/api/traffic/country?iso=DE` | Flows to specific country |
+| GET | `/api/traffic/country?iso=DE` | Flows to a specific country |
 | GET | `/api/traffic/eu` | EU flows |
-| GET | `/api/traffic/non-eu` | Non-EU flows |
+| GET | `/api/traffic/non-eu` | Non-EU flows (primary alert) |
 | GET | `/api/traffic/watch` | Watch-country flows |
 | GET | `/api/top/destinations?n=25` | Top N endpoints by count |
 | GET | `/api/top/countries?n=10` | Top N countries by count |
@@ -280,41 +231,8 @@ set system syslog host <SENTINEL_IP> port 514
 | GET | `/api/countries/list` | All countries seen in traffic |
 | GET | `/api/settings/watch` | Current watch countries |
 | POST | `/api/settings/watch` | Update watch countries `{"countries":["RU","CN"]}` |
-| POST | `/api/ingest/pcap` | Upload a `.pcap` / `.pcapng` file, extract flows |
+| POST | `/api/ingest/pcap` | Upload `.pcap` / `.pcapng`, extract flows |
 | GET | `/api/db/seed?n=300` | Inject demo data (dev only) |
-
----
-
-## PCAP Ingestion
-
-Upload a previously captured `.pcap` or `.pcapng` file and Sentinel will extract all TCP/UDP flows and insert them into the traffic database — geo-classified and immediately visible in the dashboard.
-
-```bash
-# Place your pcap in the pcaps/ directory (excluded from git)
-cp ~/Downloads/capture.pcap ./pcaps/
-
-# Upload via curl
-curl -X POST http://localhost:8000/api/ingest/pcap \
-     -F "file=@./pcaps/capture.pcap"
-```
-
-Example response:
-
-```json
-{
-  "filename": "capture.pcap",
-  "bytes_received": 2048576,
-  "flows_extracted": 1423,
-  "flows_written": 1423,
-  "message": "Successfully ingested 1423 unique flows"
-}
-```
-
-Supported formats: `.pcap` (libpcap), `.pcapng` (next-generation pcap), `.cap`.
-
-Flows are deduplicated on ingest — if a flow already exists in the database from syslog or NetFlow, its `last_seen` timestamp and `count` are updated rather than creating a duplicate.
-
-PCAP files are excluded from git via `.gitignore` — they may contain sensitive traffic data and should never be committed to the repository.
 
 ---
 
@@ -324,95 +242,100 @@ PCAP files are excluded from git via `.gitignore` — they may contain sensitive
 
 | Variable | Default | Description |
 |---|---|---|
-| `SENTINEL_LOG_FILE` | `/var/log/perimeter/traffic.jsonl` | Path to syslog-ng output |
-| `SENTINEL_DB_PATH` | `/data/sentinel.db` | SQLite database path |
+| `SENTINEL_LOG_FILE` | `/var/log/perimeter/traffic.jsonl` | syslog-ng output path |
+| `SENTINEL_DB_PATH` | `/data/eurogate.db` | SQLite database path |
 | `SENTINEL_BATCH` | `50` | Rows per commit |
 | `SENTINEL_POLL` | `0.5` | File poll interval (seconds) |
+
+### netflow
+
+| Variable | Default | Description |
+|---|---|---|
+| `NETFLOW_HOST` | `0.0.0.0` | Listen address |
+| `NETFLOW_PORT` | `2055` | Listen port |
+| `SENTINEL_DB_PATH` | `/data/eurogate.db` | SQLite database path |
 
 ### backend
 
 | Variable | Default | Description |
 |---|---|---|
-| `SENTINEL_DB_PATH` | `/data/sentinel.db` | SQLite database path |
+| `SENTINEL_DB_PATH` | `/data/eurogate.db` | SQLite database path |
 | `MAXMIND_DB_PATH` | `/mmdb/GeoLite2-Country.mmdb` | MaxMind MMDB path |
 | `STATIC_DIR` | `/app/static` | Dashboard static files |
 
 ---
 
-## Supported Firewall Log Formats
+## SQLite Schema
 
-syslog-ng parses the following with dedicated regex parsers:
-
-- **Cisco ASA / PIX / FTD** — Built/Teardown connection messages
-- **iptables / nftables** — `SRC= DST= PROTO= DPT= SPT=` format
-- **Palo Alto Networks** — CSV traffic log format
-- **Generic key=value** — Fortinet, Check Point, MikroTik, pfSense/OPNsense
-- **Bare IP:port pairs** — any log containing `x.x.x.x:port` patterns
+```sql
+CREATE TABLE traffic (
+    id         TEXT    PRIMARY KEY,   -- UUID v4
+    src_ip     TEXT    NOT NULL,
+    dst_ip     TEXT    NOT NULL,
+    dst_port   INTEGER NOT NULL,
+    protocol   TEXT    NOT NULL,      -- TCP | UDP
+    first_seen TEXT    NOT NULL,      -- ISO-8601 UTC
+    last_seen  TEXT    NOT NULL,      -- updated on every hit
+    count      INTEGER NOT NULL DEFAULT 1
+);
+-- Unique key: (src_ip, dst_ip, dst_port, protocol)
+```
 
 ---
 
 ## Security Notes
 
-- syslog-ng drops **all** metadata (hostname, facility, severity, timestamps, process names). Only the four traffic fields survive.
-- The processor validates all IP addresses and port numbers before writing to SQLite — malformed entries are silently discarded.
-- The backend mounts the SQLite database read-only.
-- No authentication is included by default. Place a reverse proxy (nginx, Caddy, Traefik) with TLS and auth in front of port 8000 before exposing to a network.
-
----
-
-## Development
-
-### Running without Docker
-
-```bash
-# Terminal 1 — processor
-cd processor
-pip install -r requirements.txt
-SENTINEL_LOG_FILE=./test.jsonl SENTINEL_DB_PATH=./dev.db python processor.py
-
-# Terminal 2 — backend
-cd backend
-pip install -r requirements.txt
-SENTINEL_DB_PATH=./dev.db MAXMIND_DB_PATH=./mmdb/GeoLite2-Country.mmdb \
-STATIC_DIR=../dashboard uvicorn main:app --reload --port 8000
-
-# Terminal 3 — inject test traffic
-echo '{"src_ip":"10.0.0.5","dst_ip":"8.8.8.8","dst_port":53,"protocol":"UDP"}' >> ./test.jsonl
-```
-
-### Seed demo data
-
-```bash
-curl "http://localhost:8000/api/db/seed?n=500"
-```
+- All metadata (hostname, facility, severity, timestamps, process names) is stripped at ingest. Only the four traffic fields survive.
+- All IP addresses and port numbers are validated before writing to SQLite.
+- No authentication is included. Place a reverse proxy (nginx, Caddy, Traefik) with TLS and basic auth in front of port 8000 before network exposure.
+- PCAP files are excluded from git — they may contain sensitive traffic data.
 
 ---
 
 ## File Structure
 
 ```
-perimeter-sentinel/
+eurogate/
 ├── docker-compose.yml
 ├── README.md
+├── .gitignore
 ├── mmdb/                          ← place GeoLite2-Country.mmdb here
-├── data/                          ← SQLite DB (created at runtime)
+├── data/                          ← SQLite DB (runtime)
+├── pcaps/                         ← drop .pcap files here (git-ignored)
 ├── syslog-ng/
-│   ├── Dockerfile                 ← Alpine + syslog-ng
-│   └── syslog-ng.conf             ← parsers, filters, JSONL output
+│   ├── Dockerfile
+│   └── syslog-ng.conf
 ├── processor/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   └── processor.py               ← tail → normalise → SQLite upsert
+│   └── processor.py
 ├── netflow/
-│   ├── Dockerfile                 ← Python 3.12 Alpine
-│   └── collector.py               ← NetFlow v5/v9/IPFIX UDP listener
-├── pcaps/                         ← drop .pcap files here (git-ignored)
+│   ├── Dockerfile
+│   └── collector.py
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   └── main.py                    ← FastAPI + GeoLite2 + REST API
+│   └── main.py
 └── dashboard/
-    ├── index.html                 ← SaaS dashboard UI
+    ├── index.html
     ├── style.css
     └── app.js
 ```
+
+---
+
+## Contributing
+
+EuroGate is open source under the MIT licence. Contributions welcome — particularly:
+
+- Additional firewall log parsers (syslog-ng)
+- IPv6 flow support
+- Alert webhooks (Slack, Teams, email) for non-EU traffic threshold breaches
+- Grafana data source plugin
+- Kubernetes / Helm deployment manifests
+
+---
+
+## Licence
+
+MIT — see [LICENSE](LICENSE)

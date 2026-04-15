@@ -1,6 +1,6 @@
 """
-Perimeter Sentinel — FastAPI Backend
-======================================
+EuroGate — EU Data Sovereignty Validator — FastAPI Backend
+===========================================================
 Serves the dashboard API:
 
   GET  /api/stats/summary          — KPI counts by geo category
