@@ -72,7 +72,7 @@ const DEMO_DATA = {
     { country:'SG', count:3204 },
     { country:'ES', count:2880 },
     { country:'AU', count:1740 }
-  ],
+  ]},
 
   '/api/top/destinations': { destinations: [
     { dst_ip:'172.217.16.46', dst_port:443, country:'US', protocol:'TCP', count:4812 },
