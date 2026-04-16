@@ -28,7 +28,7 @@ It classifies every outbound connection by destination country, flags anything l
 
 Real-time KPI summary — total flows, EU/non-EU split, watch-list hits, and a live donut chart with top destination countries.
 
-![Sovereignty Overview](docs/screenshots/01-overview.png)
+![Sovereignty Overview](docs/screenshots/01-overview-v2.png)
 
 ---
 
@@ -36,7 +36,7 @@ Real-time KPI summary — total flows, EU/non-EU split, watch-list hits, and a l
 
 Primary compliance alert view — every flow crossing EU borders, flagged for GDPR Art. 44-49 review.
 
-![Non-EU Alerts](docs/screenshots/02-non-eu-alerts.png)
+![Non-EU Alerts](docs/screenshots/02-non-eu-alerts-v2.png)
 
 ---
 
@@ -44,7 +44,7 @@ Primary compliance alert view — every flow crossing EU borders, flagged for GD
 
 Flows terminating within EU member states — compliant under GDPR adequacy provisions.
 
-![EU Traffic](docs/screenshots/03-eu-traffic.png)
+![EU Traffic](docs/screenshots/03-eu-traffic-v2.png)
 
 ---
 
@@ -52,7 +52,7 @@ Flows terminating within EU member states — compliant under GDPR adequacy prov
 
 Flows to user-defined high-risk jurisdictions. Default watch countries: Russia, China, North Korea, Iran.
 
-![Watch List](docs/screenshots/04-watch-list.png)
+![Watch List](docs/screenshots/04-watch-list-v2.png)
 
 ---
 
@@ -60,7 +60,7 @@ Flows to user-defined high-risk jurisdictions. Default watch countries: Russia, 
 
 Live feed of the last 100 connections, auto-refreshing every 30 seconds.
 
-![Recent Flows](docs/screenshots/05-recent-flows.png)
+![Recent Flows](docs/screenshots/05-recent-flows-v2.png)
 
 
 ---
