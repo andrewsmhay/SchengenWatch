@@ -208,12 +208,6 @@ async function apiFetch(path) {
   document.documentElement.setAttribute('data-theme', pref);
 })();
 
-$('#theme-toggle').addEventListener('click', () => {
-  const cur  = document.documentElement.getAttribute('data-theme');
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  lucide.createIcons({ attrs: {} });
-});
 
 // ── Sidebar toggle ────────────────────────────────────────────────────────
 $('#sidebar-toggle').addEventListener('click', () => {
