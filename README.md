@@ -88,7 +88,7 @@ Firewall / Router
 │ processor       │◀──────┘                        │
 │ tail → SQLite   │                                │
 └────────┬────────┘                                │
-         │ /data/schengenwatch.db                       │
+         │ /data/schengenwatch.db                  │
          ▼                                         │
 ┌─────────────────────────┐                        │
 │ backend                 │◀───────────────────────┘
