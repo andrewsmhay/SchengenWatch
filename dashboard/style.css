@@ -401,6 +401,47 @@ table { border-collapse: collapse; width: 100%; }
   font-family: var(--font-mono);
 }
 
+/* Topbar brand block — logo + platform name on the right */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--border-2);
+  margin-left: var(--sp-2);
+}
+
+.topbar-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.topbar-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.topbar-brand-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.topbar-brand-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 /* ── Buttons ─────────────────────────────────────────── */
 .btn {
   display: inline-flex;
