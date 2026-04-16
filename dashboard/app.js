@@ -135,7 +135,7 @@ const DEMO_DATA = {
 // ── Config ────────────────────────────────────────────────────────────────
 let API_BASE = '';  // empty = same origin; set in settings to override
 
-const AUTO_REFRESH_MS  = 30_000;  // 30 s live refresh
+const AUTO_REFRESH_MS  = 30000;  // 30 s live refresh
 let   autoRefreshTimer = null;
 
 // ── EU countries (for badge classification client-side) ───────────────────
