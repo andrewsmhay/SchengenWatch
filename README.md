@@ -20,7 +20,9 @@ It classifies every outbound connection by destination country, flags anything l
 
 ## Dashboard Screenshots
 
-> **Note:** Screenshots show demo data. Country fields display `—` because geo-enrichment requires a [MaxMind GeoLite2-Country](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database (`GeoLite2-Country.mmdb`), which is not distributed with SchengenWatch due to MaxMind's licensing terms. See [Obtaining GeoLite2-Country.mmdb](#obtaining-geolite2-countrymmmdb) for setup instructions. With the MMDB in place, all country columns, EU/non-EU classification, and watch-list matching resolve correctly.
+> **Note:** Screenshots show demo data seeded via `GET /api/db/seed`. Country fields display `—` in screenshots because geo-enrichment requires a [MaxMind GeoLite2-Country](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database (`GeoLite2-Country.mmdb`), which is not distributed with SchengenWatch due to MaxMind's licensing terms. See [Obtaining GeoLite2-Country.mmdb](#obtaining-geolite2-countrymmmdb) for setup instructions. With the MMDB in place, all country columns, EU/non-EU classification, and watch-list matching resolve correctly.
+>
+> The dashboard uses the **Damovo Traces** dark theme — charcoal surfaces with crimson accents, Raleway/Inter typography, and the Damovo Traces logo in the sidebar.
 
 ### Sovereignty Overview
 
@@ -150,8 +152,8 @@ cp ~/Downloads/GeoLite2-Country_*/GeoLite2-Country.mmdb mmdb/
 ## Quick Start
 
 ```bash
-git clone https://github.com/andrewsmhay/schengenwatch.git
-cd schengenwatch
+git clone https://github.com/andrewsmhay/SchengenWatch.git
+cd SchengenWatch
 
 # 1. Add your MaxMind database
 mkdir -p mmdb
@@ -163,7 +165,7 @@ docker compose up -d
 # 3. Open the dashboard
 open http://localhost:8000
 
-# 4. Inject demo data (no firewall required)
+# 4. Inject demo data (no firewall required — dev mode enabled by default)
 curl "http://localhost:8000/api/db/seed?n=500"
 ```
 
@@ -277,7 +279,7 @@ Flows are deduplicated — if a flow already exists from syslog or NetFlow, `las
 | GET | `/api/settings/watch` | Current watch countries |
 | POST | `/api/settings/watch` | Update watch countries `{"countries":["RU","CN"]}` |
 | POST | `/api/ingest/pcap` | Upload `.pcap` / `.pcapng`, extract flows |
-| GET | `/api/db/seed?n=300` | Inject demo data (dev only) |
+| GET | `/api/db/seed?n=300` | Inject demo data (`ENABLE_SEED=true` required) |
 
 ---
 
@@ -304,9 +306,11 @@ Flows are deduplicated — if a flow already exists from syslog or NetFlow, `las
 
 | Variable | Default | Description |
 |---|---|---|
-| `SENTINEL_DB_PATH` | `/data/schengenwatch.db` | SQLite database path |
+| `SENTINEL_DB_PATH` | `/data/sentinel.db` | SQLite database path |
 | `MAXMIND_DB_PATH` | `/mmdb/GeoLite2-Country.mmdb` | MaxMind MMDB path |
 | `STATIC_DIR` | `/app/static` | Dashboard static files |
+| `ENABLE_SEED` | `false` | Set `true` to enable `/api/db/seed` (dev only — disable in production) |
+| `CORS_ORIGINS` | _(empty)_ | Comma-separated allowed CORS origins — leave unset for same-origin only |
 
 ---
 
@@ -328,12 +332,32 @@ CREATE TABLE traffic (
 
 ---
 
-## Security Notes
+## Security
 
-- All metadata (hostname, facility, severity, timestamps, process names) is stripped at ingest. Only the four traffic fields survive.
+### OWASP Top 10 Assessment
+
+SchengenWatch was assessed against the OWASP Top 10. Key findings and mitigations:
+
+| Category | Status | Notes |
+|---|---|---|
+| A01 Broken Access Control | Mitigated | Seed endpoint gated behind `ENABLE_SEED` env var; watch settings writable by any local user |
+| A02 Cryptographic Failures | Acceptable | No PII stored; HTTP only — add TLS reverse proxy for network exposure |
+| A03 Injection | Clean | All SQL uses parameterised queries; IPs/ports/protocols validated against strict allowlists |
+| A04 Insecure Design | Mitigated | Seed endpoint returns 403 unless `ENABLE_SEED=true` |
+| A05 Security Misconfiguration | Mitigated | CORS locked to same-origin; security headers added (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) |
+| A06 Vulnerable Components | Patched | CVEs in `python-multipart` and `starlette` resolved — `python-multipart>=0.0.26` |
+| A07 Auth & Identity | By design | Self-hosted, single-tenant; no auth layer — protect with network isolation or reverse proxy |
+| A08 Software Integrity | Clean | No `eval`/`exec` on untrusted input; no shell execution in PCAP ingestion |
+| A09 Logging & Monitoring | Clean | Structured logging in all containers; no credentials or PII logged |
+| A10 SSRF | N/A | Backend makes no outbound HTTP requests |
+
+### General Notes
+
+- All metadata (hostname, facility, severity, timestamps, process names) is stripped at ingest. Only `src_ip`, `dst_ip`, `dst_port`, and `protocol` survive.
 - All IP addresses and port numbers are validated before writing to SQLite.
 - No authentication is included. Place a reverse proxy (nginx, Caddy, Traefik) with TLS and basic auth in front of port 8000 before network exposure.
 - PCAP files are excluded from git — they may contain sensitive traffic data.
+- The `/api/db/seed` endpoint is disabled by default (`ENABLE_SEED=false`). Never set `ENABLE_SEED=true` in production.
 
 ---
 
@@ -364,7 +388,9 @@ schengenwatch/
 └── dashboard/
     ├── index.html
     ├── style.css
-    └── app.js
+    ├── app.js
+    ├── logo.jpg          ← Damovo Traces sidebar logo
+    └── traces.jpg        ← Damovo Traces topbar logo
 ```
 
 ---
