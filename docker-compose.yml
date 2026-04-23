@@ -108,13 +108,17 @@ services:
       - "8000:8000"
     volumes:
       - schengenwatch-db:/data                     # reads sentinel.db
-      - ./mmdb:/mmdb:ro                       # GeoLite2-Country.mmdb
-      - ./dashboard:/app/static:ro            # dashboard HTML/CSS/JS
+      - ./mmdb:/mmdb:ro                            # GeoLite2-Country.mmdb + GeoLite2-ASN.mmdb
+      - ./dashboard:/app/static:ro                 # dashboard HTML/CSS/JS
+      - ./jurisdiction:/app/jurisdiction:ro          # jurisdiction_policy.yaml + parent_company_graph.yaml
     environment:
-      SENTINEL_DB_PATH:  /data/sentinel.db
-      MAXMIND_DB_PATH:   /mmdb/GeoLite2-Country.mmdb
-      STATIC_DIR:        /app/static
-      ENABLE_SEED:       "true"   # dev only — remove in production
+      SENTINEL_DB_PATH:     /data/sentinel.db
+      MAXMIND_DB_PATH:      /mmdb/GeoLite2-Country.mmdb
+      MAXMIND_ASN_DB_PATH:  /mmdb/GeoLite2-ASN.mmdb
+      CLASSIFICATION_DIR:   /app/jurisdiction
+      STATIC_DIR:           /app/static
+      ENABLE_SEED:          "true"   # dev only — remove in production
+      FILTER_PRIVATE_DST:   "true"  # set to "true" to drop flows with RFC-1918 destination IPs
     networks:
       - schengenwatch-net
     healthcheck:

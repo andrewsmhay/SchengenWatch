@@ -171,6 +171,8 @@
                   <th>Port</th>
                   <th>Protocol</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th>Category</th>
                   <th class="num-col">Total Comms</th>
                   <th>First Seen</th>
@@ -178,7 +180,7 @@
                 </tr>
               </thead>
               <tbody id="tbody-top-dest">
-                <tr><td colspan="8" class="empty-state"><span class="skeleton-line"></span></td></tr>
+                <tr><td colspan="10" class="empty-state"><span class="skeleton-line"></span></td></tr>
               </tbody>
             </table>
           </div>
@@ -214,6 +216,8 @@
                   <th>Port</th>
                   <th>Proto</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th class="num-col">Comms</th>
                   <th>First Seen</th>
                   <th>Last Seen</th>
@@ -261,6 +265,8 @@
                   <th>Port</th>
                   <th>Proto</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th class="num-col">Comms</th>
                   <th>First Seen</th>
                   <th>Last Seen</th>
@@ -312,6 +318,8 @@
                   <th>Port</th>
                   <th>Proto</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th class="num-col">Comms</th>
                   <th>First Seen</th>
                   <th>Last Seen</th>
@@ -360,6 +368,8 @@
                   <th>Port</th>
                   <th>Proto</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th class="num-col">Comms</th>
                   <th>First Seen</th>
                   <th>Last Seen</th>
@@ -393,6 +403,8 @@
                   <th>Port</th>
                   <th>Proto</th>
                   <th>Country</th>
+                  <th>Org / ASN</th>
+                  <th>Jurisdiction</th>
                   <th>Category</th>
                   <th class="num-col">Comms</th>
                   <th>Last Seen</th>
@@ -457,14 +469,22 @@
         <div class="settings-card">
           <h2 class="settings-section-title">MaxMind GeoLite2</h2>
           <p class="settings-desc">
-            The backend requires a <strong>GeoLite2-Country.mmdb</strong> file mounted at
-            <code>/mmdb/GeoLite2-Country.mmdb</code>. Download it free from
+            The backend requires <strong>GeoLite2-Country.mmdb</strong> and <strong>GeoLite2-ASN.mmdb</strong>
+            mounted at <code>/mmdb/</code>. Download both free from
             <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener">MaxMind</a>
-            and bind-mount it into the backend container (see docker-compose.yml).
+            and place them in the <code>mmdb/</code> folder (see docker-compose.yml).
           </p>
           <div class="health-row">
-            <span class="health-label">MMDB status:</span>
+            <span class="health-label">Country MMDB:</span>
             <span class="health-value" id="mmdb-status">checking…</span>
+          </div>
+          <div class="health-row">
+            <span class="health-label">ASN MMDB:</span>
+            <span class="health-value" id="mmdb-asn-status">checking…</span>
+          </div>
+          <div class="health-row">
+            <span class="health-label">Jurisdiction entries:</span>
+            <span class="health-value" id="jurisdiction-entries">checking…</span>
           </div>
         </div>
       </section>
