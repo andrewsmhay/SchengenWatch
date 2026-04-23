@@ -1,0 +1,525 @@
+# ==============================================================================
+# jurisdiction_policy.yaml
+# ==============================================================================
+# Purpose   : Defines legal jurisdictions relevant to data sovereignty assessments.
+#             This file contains ONLY policy definitions — no ASNs, no patterns,
+#             no entity data. Those live exclusively in parent_company_graph.yaml.
+#
+# Maintainer: CISO / Legal
+# Review    : Annual or upon relevant legislative change
+# Version   : 2.0.0
+# Updated   : 2026-04
+#
+# CHANGELOG:
+#   2.0.0 (2026-04) : Added 5 jurisdictions — AU_TOLA, RU_SORM, KR_PIPA,
+#                     IN_DPDP, IL_NSL. Expanded valid_tags registry.
+#                     Cross-linked Five Eyes related_tags.
+#   1.0.0 (2025-04) : Initial release — US_CLOUD_ACT, US_FISA_702,
+#                     CN_NSL, UK_IPA.
+# ==============================================================================
+
+meta:
+  schema_version: "1.0"
+  language: "en"
+  description: >
+    Legal jurisdiction taxonomy for network traffic sovereignty classification.
+    Tags defined here are referenced by entities in parent_company_graph.yaml.
+    A single IP flow may carry multiple tags if the ultimate beneficial owner
+    falls under more than one legal framework.
+
+# ------------------------------------------------------------------------------
+# JURISDICTION DEFINITIONS
+# ------------------------------------------------------------------------------
+
+jurisdictions:
+
+  # ── US: CLOUD Act ─────────────────────────────────────────────────────────────
+  US_CLOUD_ACT:
+    label: "US CLOUD Act"
+    short_description: >
+      US parent company — US authorities may compel disclosure of data
+      stored anywhere in the world, regardless of where the data center
+      is located.
+    legal_basis:
+      name: "Clarifying Lawful Overseas Use of Data Act"
+      abbreviation: "CLOUD Act"
+      enacted: "2018-03-23"
+      jurisdiction: "United States"
+      reference: "18 U.S.C. § 2713"
+    key_facts:
+      - "Applies to all US-incorporated entities and their subsidiaries globally"
+      - "Allows US DOJ to issue warrants for data stored outside the US"
+      - "EU-based subsidiaries and data centers do NOT exempt from this law"
+      - "Cayman/BVI holding structures with US operational control are included"
+      - "GDPR does not override CLOUD Act obligations for US-parent companies"
+    risk_level: high
+    geographic_scope: "Global — all subsidiaries of US-incorporated entities"
+    triggers_for_tagging:
+      - "Ultimate Beneficial Owner (UBO) is incorporated in the United States"
+      - "Company is listed on a US stock exchange and subject to US law"
+      - "Operational control demonstrably exercised from the United States"
+    review_cycle: "annual"
+    related_tags: [US_FISA_702, UK_IPA, AU_TOLA]
+    references:
+      - url: "https://www.justice.gov/dag/cloudact"
+        description: "US DOJ CLOUD Act overview"
+      - url: "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52019DC0479"
+        description: "European Commission adequacy and CLOUD Act analysis"
+
+  # ── US: FISA Section 702 ──────────────────────────────────────────────────────
+  US_FISA_702:
+    label: "US FISA Section 702"
+    short_description: >
+      Electronic Communication Service Provider (ECSP) under US jurisdiction —
+      NSA and other intelligence agencies may collect communications data
+      targeting non-US persons outside the United States.
+    legal_basis:
+      name: "Foreign Intelligence Surveillance Act, Section 702"
+      abbreviation: "FISA §702"
+      enacted: "2008-07-10"
+      last_reauthorized: "2024-04-20"
+      jurisdiction: "United States"
+      reference: "50 U.S.C. § 1881a"
+    key_facts:
+      - "Applies specifically to Electronic Communication Service Providers (ECSPs)"
+      - "Allows warrantless collection of communications of non-US persons abroad"
+      - "Covers email, messaging, cloud storage, VoIP, and similar services"
+      - "NSA programs PRISM and UPSTREAM operate under this authority"
+      - "Reauthorized April 2024 with expanded 'abouts' collection provisions"
+      - "Not limited to metadata — content of communications may be collected"
+    risk_level: critical
+    geographic_scope: "Communications of non-US persons transiting US infrastructure"
+    applies_to_service_types:
+      - "Email providers (Gmail, Outlook, Yahoo Mail)"
+      - "Cloud storage (OneDrive, Google Drive, iCloud, S3)"
+      - "Messaging platforms (Teams, WhatsApp, iMessage)"
+      - "Video conferencing (Google Meet, Teams)"
+      - "General cloud compute (AWS, Azure, GCP)"
+    note: >
+      FISA §702 is a subset of US_CLOUD_ACT. Every entity tagged US_FISA_702
+      is also tagged US_CLOUD_ACT. Not every US_CLOUD_ACT entity qualifies
+      as an ECSP for §702 purposes (e.g. pure infrastructure or CDN providers).
+    review_cycle: "annual"
+    related_tags: [US_CLOUD_ACT, AU_TOLA]
+    references:
+      - url: "https://www.dni.gov/index.php/ic-legal-reference-book/foreign-intelligence-surveillance-act-section-702"
+        description: "ODNI FISA §702 reference"
+
+  # ── CN: National Intelligence Law / National Security Law ────────────────────
+  CN_NSL:
+    label: "Chinese National Intelligence / Security Law"
+    short_description: >
+      Chinese-controlled entity — Chinese law mandates cooperation with
+      state intelligence services; applies to all subsidiaries worldwide
+      regardless of local incorporation jurisdiction.
+    legal_basis:
+      - name: "National Intelligence Law"
+        abbreviation: "NIL"
+        enacted: "2017-06-27"
+        jurisdiction: "People's Republic of China"
+        reference: "Articles 7, 14"
+        key_article: >
+          Article 7: 'Any organization or citizen shall support, assist,
+          and cooperate with state intelligence work.'
+      - name: "National Security Law (Hong Kong)"
+        abbreviation: "NSL HK"
+        enacted: "2020-06-30"
+        jurisdiction: "Hong Kong SAR / PRC"
+        reference: "Articles 38, 55"
+    key_facts:
+      - "Applies to all Chinese nationals and Chinese-controlled entities globally"
+      - "No judicial oversight or warrant requirement — administrative order sufficient"
+      - "Cayman/BVI holding structures with Chinese operational control are included"
+      - "No equivalent to GDPR — no data protection authority oversight"
+      - "Enforcement risk applies even if data centers are located outside China"
+      - "Applies to non-Chinese entities if they process data on Chinese nationals"
+    risk_level: critical
+    geographic_scope: "Global — all entities under Chinese operational control"
+    triggers_for_tagging:
+      - "UBO incorporated in the People's Republic of China"
+      - "Chinese state-owned enterprise (SOE) at any level of the ownership chain"
+      - "Majority shareholder is a Chinese national or Chinese-controlled entity"
+      - "Cayman/BVI holding with demonstrable PRC operational control"
+    review_cycle: "annual"
+    related_tags: []
+    references:
+      - url: "https://www.chinalawtranslate.com/en/2017-national-intelligence-law/"
+        description: "Full text of National Intelligence Law (EN translation)"
+      - url: "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/5G/5GSTAG.html"
+        description: "BSI study on 5G and Chinese vendor risk"
+
+  # ── UK: Investigatory Powers Act ──────────────────────────────────────────────
+  UK_IPA:
+    label: "UK Investigatory Powers Act"
+    short_description: >
+      UK-incorporated operator — GCHQ and other UK agencies may compel
+      bulk interception of communications and equipment interference
+      without individual warrants.
+    legal_basis:
+      name: "Investigatory Powers Act"
+      abbreviation: "IPA 2016"
+      enacted: "2016-11-29"
+      amended: "2024"
+      jurisdiction: "United Kingdom"
+      reference: "Parts 6 and 9"
+      colloquial: "Snooper's Charter"
+    key_facts:
+      - "Authorizes bulk collection of internet communications records (ICRs)"
+      - "Enables equipment interference (remote hacking) of devices at scale"
+      - "Requires CSPs to maintain technical capability notices for interception"
+      - "2024 amendment adds powers to block app updates from abroad"
+      - "Secret notices may compel CSPs to disable end-to-end encryption"
+      - "Post-Brexit: no longer subject to CJEU oversight"
+    risk_level: high
+    geographic_scope: "UK-operated networks and communications services"
+    applies_to_service_types:
+      - "Telecommunications operators (mobile and fixed line)"
+      - "Internet Service Providers"
+      - "Messaging platforms with UK operations"
+      - "Cloud providers with UK data centers"
+    note: >
+      A UK subsidiary of a US parent may carry BOTH UK_IPA and US_CLOUD_ACT.
+      Tag both in such cases (e.g. Sky UK, owned by Comcast).
+    review_cycle: "annual"
+    related_tags: [US_CLOUD_ACT, AU_TOLA]
+    references:
+      - url: "https://www.legislation.gov.uk/ukpga/2016/25/contents"
+        description: "Full text of the Investigatory Powers Act 2016"
+      - url: "https://www.openrightsgroup.org/issues/surveillance/investigatory-powers-act/"
+        description: "Open Rights Group IPA analysis"
+
+  # ── AU: Telecommunications and Other Legislation Amendment Act (TOLA) ─────────
+  AU_TOLA:
+    label: "Australian TOLA / Assistance and Access Act"
+    short_description: >
+      Australian-operated service — law enforcement and intelligence
+      agencies may issue Technical Assistance Notices (TAN) or Technical
+      Capability Notices (TCN) to compel assistance, potentially including
+      encryption bypass. Part of Five Eyes intelligence sharing framework.
+    legal_basis:
+      - name: "Telecommunications and Other Legislation Amendment (Assistance and Access) Act"
+        abbreviation: "TOLA Act / AA Act"
+        enacted: "2018-12-08"
+        jurisdiction: "Commonwealth of Australia"
+        reference: "Amendments to Telecommunications Act 1997, Part 15"
+      - name: "Telecommunications (Interception and Access) Act"
+        abbreviation: "TIA Act"
+        enacted: "1979"
+        amended: "2015 (mandatory data retention regime)"
+        jurisdiction: "Commonwealth of Australia"
+      - name: "Security of Critical Infrastructure Act"
+        abbreviation: "SOCI Act"
+        enacted: "2018"
+        amended: "2022"
+        jurisdiction: "Commonwealth of Australia"
+    key_facts:
+      - "TAR (voluntary request), TAN (mandatory notice), TCN (capability build notice)"
+      - "TCNs can compel providers to build new technical capabilities for assistance"
+      - "Applies to 'designated communications providers' — broad definition including overseas entities with AU nexus"
+      - "Secret non-disclosure: recipients cannot publicly reveal receipt of notices"
+      - "Mandatory 2-year metadata retention under TIA Act"
+      - "Five Eyes partner — reciprocal intelligence sharing with US, UK, CA, NZ"
+      - "SOCI Act adds critical infrastructure designations with cyber incident reporting duties"
+    risk_level: high
+    geographic_scope: "Australian-operated services; providers with AU customer nexus"
+    triggers_for_tagging:
+      - "UBO incorporated in Australia"
+      - "Australian telecommunications operator or carriage service provider"
+      - "Designated communications provider under TOLA definitions"
+    applies_to_service_types:
+      - "Telecommunications operators and carriers"
+      - "Internet Service Providers"
+      - "Messaging and communications platforms with AU operations"
+      - "Cloud providers with AU data centers or AU customer data"
+    note: >
+      Due to Five Eyes arrangements, AU_TOLA should be considered alongside
+      US_CLOUD_ACT, US_FISA_702, and UK_IPA when assessing reciprocal
+      intelligence sharing risk. Metadata collected under AU_TOLA may be
+      shared with partner agencies.
+    review_cycle: "annual"
+    related_tags: [US_CLOUD_ACT, US_FISA_702, UK_IPA]
+    references:
+      - url: "https://www.legislation.gov.au/C2018A00148/latest/text"
+        description: "Full text of TOLA Act 2018"
+      - url: "https://www.homeaffairs.gov.au/about-us/our-portfolios/national-security/lawful-access-telecommunications/assistance-and-access-industry-assistance"
+        description: "Australian Home Affairs — Assistance and Access overview"
+      - url: "https://www.accessnow.org/australias-assistance-and-access-act/"
+        description: "Access Now analysis of TOLA Act impact"
+
+  # ── RU: SORM / Yarovaya Law ───────────────────────────────────────────────────
+  RU_SORM:
+    label: "Russian SORM / Yarovaya Law"
+    short_description: >
+      Russian-operated service — FSB maintains direct real-time access to
+      communications via mandatory SORM interception infrastructure.
+      Providers must retain content and metadata and disclose encryption
+      keys upon administrative request.
+    legal_basis:
+      - name: "Federal Law No. 374-FZ (Yarovaya Law)"
+        abbreviation: "FZ-374"
+        enacted: "2016-07-06"
+        jurisdiction: "Russian Federation"
+        reference: "Amendments to Federal Laws 'On Communications' and 'On Information'"
+      - name: "SORM-3 Technical Framework"
+        abbreviation: "SORM-3"
+        enacted: "2014"
+        jurisdiction: "Russian Federation"
+        reference: "Order of Ministry of Communications No. 83"
+      - name: "Federal Law No. 149-FZ"
+        abbreviation: "FZ-149"
+        enacted: "2006-07-27"
+        amended: "ongoing"
+        jurisdiction: "Russian Federation"
+        reference: "On Information, Information Technologies and Information Protection"
+    key_facts:
+      - "FSB has direct real-time access to all telecom/ISP traffic via SORM black boxes"
+      - "No judicial warrant required — administrative FSB order sufficient"
+      - "Content retention: 6 months for voice, messaging, and email content"
+      - "Metadata retention: 3 years"
+      - "Information Dissemination Organizers (ОРИ / ORI) must disclose encryption keys to FSB"
+      - "Applies to Russian telcos, ISPs, and any service on the ОРИ registry (Roskomnadzor)"
+      - "Many Russian entities under EU/US/UK sanctions since February 2022"
+      - "VPN and anonymization services heavily restricted since 2017"
+    risk_level: critical
+    geographic_scope: "Russian-operated networks and services; Russian ОРИ-registered platforms"
+    triggers_for_tagging:
+      - "UBO incorporated in the Russian Federation"
+      - "Russian telecom operator or ISP"
+      - "Service registered as Information Dissemination Organizer (ОРИ) with Roskomnadzor"
+      - "Majority Russian ownership at any level of the ownership chain"
+    applies_to_service_types:
+      - "Russian telecom operators (Rostelecom, MTS, MegaFon, Beeline/Vimpelcom)"
+      - "Russian ISPs and hosting providers"
+      - "Russian email and messaging services (Mail.ru, Yandex Mail, VK)"
+      - "Russian search and content platforms (Yandex, VK, Rambler)"
+      - "Russian cybersecurity vendors with RU-based operations"
+    note: >
+      Many entities tagged RU_SORM are also subject to EU/US/UK sanctions
+      since February 2022. Operational use may be legally restricted
+      independent of sovereignty considerations. Coordinate with Legal
+      on sanctions screening before any engagement.
+    review_cycle: "annual"
+    related_tags: []
+    references:
+      - url: "https://www.eff.org/deeplinks/2016/07/russias-new-surveillance-law-makes-internet-more-dangerous-everyone"
+        description: "EFF analysis of Yarovaya Law / FZ-374"
+      - url: "https://privacyinternational.org/long-read/3459/state-russia-interception-communications"
+        description: "Privacy International — Russia surveillance profile"
+
+  # ── KR: Korean Data Protection & Communications Access Framework ──────────────
+  KR_PIPA:
+    label: "Korean PIPA + Communications Secrets Act Framework"
+    short_description: >
+      Korean-operated service — while the Personal Information Protection
+      Act (PIPA) provides GDPR-adequate data protection, the Protection of
+      Communications Secrets Act (PCSA) and Telecommunications Business
+      Act (TBA) enable state access to communications content and metadata.
+    legal_basis:
+      - name: "Personal Information Protection Act"
+        abbreviation: "PIPA"
+        enacted: "2011-09-30"
+        amended: "2020-08-05, 2023-09-15"
+        jurisdiction: "Republic of Korea"
+      - name: "Protection of Communications Secrets Act"
+        abbreviation: "PCSA"
+        enacted: "1993-12-27"
+        jurisdiction: "Republic of Korea"
+      - name: "Telecommunications Business Act"
+        abbreviation: "TBA"
+        enacted: "1991"
+        amended: "ongoing"
+        jurisdiction: "Republic of Korea"
+      - name: "National Intelligence Service Act"
+        abbreviation: "NIS Act"
+        enacted: "1961"
+        amended: "ongoing"
+        jurisdiction: "Republic of Korea"
+    key_facts:
+      - "PIPA itself is GDPR-adequate (EU adequacy decision December 2021)"
+      - "State access risk stems from PCSA + TBA + NIS Act, not PIPA itself"
+      - "Content interception under PCSA generally requires a judicial warrant"
+      - "Metadata (subscriber info, call detail records) accessible via prosecutor request without court order"
+      - "NIS has broad national security exemption for counter-espionage"
+      - "Korean telcos must retain communication metadata under TBA"
+      - "Korea is NOT a Five Eyes partner — no formal reciprocal intelligence sharing"
+    risk_level: medium
+    geographic_scope: "Korean-operated telecom and communications services"
+    triggers_for_tagging:
+      - "UBO incorporated in Republic of Korea"
+      - "Korean telecommunications operator (KT, SKT, LG U+)"
+      - "Korean messaging/platform provider subject to TBA"
+    applies_to_service_types:
+      - "Korean telcos and ISPs"
+      - "Korean messaging and search platforms (Naver, Kakao, LINE / LY Corporation)"
+      - "Korean IT services with customer communications data"
+    note: >
+      Risk level is medium (lower than US_CLOUD_ACT or CN_NSL) because
+      judicial oversight applies to content interception under PCSA.
+      Metadata access is more permissive. Korea received EU adequacy
+      decision for commercial data transfers in December 2021.
+    review_cycle: "annual"
+    related_tags: []
+    references:
+      - url: "https://www.pipc.go.kr/eng/"
+        description: "Personal Information Protection Commission (PIPC) — English portal"
+      - url: "https://commission.europa.eu/document/download/c5b0e10c-33a7-4fa1-ad0c-c9fcd4cd9cf0_en"
+        description: "EU adequacy decision for the Republic of Korea (Dec 2021)"
+
+  # ── IN: Digital Personal Data Protection Act + Telegraph Act ──────────────────
+  IN_DPDP:
+    label: "Indian DPDP Act + Telegraph/IT Act State Access"
+    short_description: >
+      Indian-operated service — the Digital Personal Data Protection Act
+      provides a privacy framework with broad state exemptions. State
+      access is enabled via Telegraph Act Section 5(2), IT Act Section 69,
+      and CERT-In directions mandating rapid log disclosure.
+    legal_basis:
+      - name: "Digital Personal Data Protection Act"
+        abbreviation: "DPDP Act"
+        enacted: "2023-08-11"
+        effective: "phased from 2025"
+        jurisdiction: "Republic of India"
+        reference: "Act No. 22 of 2023"
+      - name: "Indian Telegraph Act, Section 5(2)"
+        abbreviation: "Telegraph Act"
+        enacted: "1885"
+        amended: "ongoing"
+        jurisdiction: "Republic of India"
+      - name: "Information Technology Act, Section 69"
+        abbreviation: "IT Act"
+        enacted: "2000"
+        amended: "2008"
+        jurisdiction: "Republic of India"
+      - name: "CERT-In Directions (April 2022)"
+        abbreviation: "CERT-In"
+        enacted: "2022-04-28"
+        jurisdiction: "Republic of India"
+        reference: "Sub-section (6) of section 70B, IT Act 2000"
+    key_facts:
+      - "Telegraph Act Section 5(2) allows interception via executive order — no judicial warrant required"
+      - "IT Act Section 69 extends interception/monitoring to digital communications"
+      - "CERT-In Directions (April 2022): mandatory 6-hour incident reporting"
+      - "CERT-In: 180-day log retention for ISPs, cloud providers, VPN services, data centers"
+      - "DPDP Act grants broad government exemptions for national security and sovereignty"
+      - "Sectoral data localization (RBI: payment data must be stored only in India)"
+      - "Government may designate Significant Data Fiduciaries with additional duties"
+    risk_level: high
+    geographic_scope: "Indian-operated services; operations processing data via Indian infrastructure"
+    triggers_for_tagging:
+      - "UBO incorporated in Republic of India"
+      - "Indian telecom operator or ISP"
+      - "Indian IT services / BPO company processing customer data"
+      - "Service subject to CERT-In directions compliance"
+    applies_to_service_types:
+      - "Indian telcos (Reliance Jio, Bharti Airtel, BSNL, Vi)"
+      - "Indian IT services / BPO (TCS, Infosys, Wipro, HCL, Tech Mahindra)"
+      - "Indian cloud and hosting providers"
+      - "Payment processors operating in India under RBI localization"
+    review_cycle: "annual"
+    related_tags: []
+    references:
+      - url: "https://www.meity.gov.in/data-protection-framework"
+        description: "MeitY — Digital Personal Data Protection Act"
+      - url: "https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf"
+        description: "CERT-In Directions under Section 70B (April 2022)"
+
+  # ── IL: Israeli National Security / Wiretap Framework ────────────────────────
+  IL_NSL:
+    label: "Israeli National Security & Wiretap Framework"
+    short_description: >
+      Israeli-operated service — Shin Bet (ISA) and law enforcement may
+      intercept communications under the Secret Monitoring Law and ISA
+      Law, with limited judicial oversight in national security matters.
+      The Israeli cybersecurity sector has deep ties to Unit 8200 military
+      SIGINT through founders and ongoing reserve duty obligations.
+    legal_basis:
+      - name: "Secret Monitoring Law (Wiretap Law)"
+        abbreviation: "Wiretap Law 1979"
+        enacted: "1979"
+        amended: "ongoing"
+        jurisdiction: "State of Israel"
+      - name: "General Security Service Law (Shin Bet Law)"
+        abbreviation: "ISA Law 2002"
+        enacted: "2002-02-11"
+        jurisdiction: "State of Israel"
+      - name: "Counter-Terrorism Law"
+        abbreviation: "CT Law 2016"
+        enacted: "2016-06-15"
+        jurisdiction: "State of Israel"
+      - name: "Protection of Privacy Law"
+        abbreviation: "PPL"
+        enacted: "1981"
+        amended: "ongoing"
+        jurisdiction: "State of Israel"
+    key_facts:
+      - "Shin Bet (ISA / Shabak) can intercept communications under broad administrative authority"
+      - "National security interception generally does not require individual judicial warrant"
+      - "Criminal wiretaps under the Secret Monitoring Law require court order"
+      - "Deep integration of Israeli cybersecurity industry with Unit 8200 military SIGINT"
+      - "Many Israeli security vendors founded by Unit 8200 alumni with reserve duty obligations"
+      - "Defense Export Control Law 2007 regulates cyber-capability exports (including commercial products)"
+      - "Israel holds EU adequacy decision for commercial data transfers (2011)"
+    risk_level: high
+    geographic_scope: "Israeli-operated services; Israeli R&D operations of multinationals"
+    triggers_for_tagging:
+      - "UBO incorporated in State of Israel"
+      - "Significant R&D or engineering operations located in Israel"
+      - "Israeli cybersecurity vendor with Unit 8200 founder lineage"
+    applies_to_service_types:
+      - "Israeli cybersecurity vendors (Check Point, CyberArk, Imperva, Wiz, Varonis, Forter)"
+      - "Israeli telecommunications operators (Bezeq, Cellcom, Partner, Pelephone)"
+      - "Israeli communications and messaging services"
+    note: >
+      Risk assessment should consider the specific service category.
+      Pure commercial data processing may pose lower risk than services
+      handling communications content or security telemetry. Unit 8200
+      linkage is a qualitative risk factor, not a legal obligation —
+      but relevant for threat modeling in high-assurance contexts.
+    review_cycle: "annual"
+    related_tags: []
+    references:
+      - url: "https://www.acri.org.il/en/category/privacy-surveillance/"
+        description: "Association for Civil Rights in Israel — privacy & surveillance"
+      - url: "https://privacyinternational.org/learn/communications-surveillance"
+        description: "Privacy International — communications surveillance overview"
+
+# ------------------------------------------------------------------------------
+# RISK LEVEL DEFINITIONS
+# ------------------------------------------------------------------------------
+
+risk_levels:
+  critical:
+    description: >
+      High certainty of legal obligation to disclose data to state actors.
+      No judicial oversight or data subject rights apply effectively.
+      Must be flagged in all data sovereignty assessments.
+  high:
+    description: >
+      Legal framework exists that enables state access.
+      Judicial or administrative oversight may apply.
+      Should be flagged and reviewed by CISO/Legal.
+  medium:
+    description: >
+      Indirect exposure through parent company or treaty arrangements.
+      Flag for awareness; assess on a case-by-case basis.
+  low:
+    description: >
+      Theoretical or minimal risk based on current legal interpretation.
+      Document for audit trail but do not flag operationally.
+
+# ------------------------------------------------------------------------------
+# VALID TAG REGISTRY
+# Single authoritative list of all valid tag identifiers.
+# Any tag used in parent_company_graph.yaml must be listed here.
+# ------------------------------------------------------------------------------
+
+valid_tags:
+  - US_CLOUD_ACT
+  - US_FISA_702
+  - UK_IPA
+  - AU_TOLA
+  - CN_NSL
+  - RU_SORM
+  - KR_PIPA
+  - IN_DPDP
+  - IL_NSL

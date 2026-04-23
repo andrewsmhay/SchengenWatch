@@ -19,6 +19,7 @@ Serves the dashboard API:
   GET  /api/db/seed                — (dev) inject synthetic traffic rows
 """
 
+import ipaddress
 import os
 import sqlite3
 import uuid
@@ -28,6 +29,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import yaml
 import geoip2.database
 import geoip2.errors
 from fastapi import FastAPI, HTTPException, Query
@@ -37,10 +39,14 @@ from pydantic import BaseModel
 
 # ── Config ──────────────────────────────────────────────────────────────────
 DB_PATH    = os.getenv("SENTINEL_DB_PATH",  "/data/sentinel.db")
-MMDB_PATH  = os.getenv("MAXMIND_DB_PATH",   "/mmdb/GeoLite2-Country.mmdb")
-STATIC_DIR = os.getenv("STATIC_DIR",        "/app/static")
+MMDB_PATH          = os.getenv("MAXMIND_DB_PATH",      "/mmdb/GeoLite2-Country.mmdb")
+MMDB_ASN_PATH      = os.getenv("MAXMIND_ASN_DB_PATH", "/mmdb/GeoLite2-ASN.mmdb")
+CLASSIFICATION_DIR = os.getenv("CLASSIFICATION_DIR",  "/app/jurisdiction")
+STATIC_DIR         = os.getenv("STATIC_DIR",          "/app/static")
 # Set ENABLE_SEED=true in dev only — never in production
 ENABLE_SEED = os.getenv("ENABLE_SEED", "false").lower() == "true"
+# Set FILTER_PRIVATE_DST=true to exclude flows with RFC-1918 destination IPs
+FILTER_PRIVATE_DST = os.getenv("FILTER_PRIVATE_DST", "false").lower() == "true"
 
 # ── EU member state ISO-3166-1 alpha-2 codes ───────────────────────────────
 EU_COUNTRIES = frozenset({
@@ -88,6 +94,90 @@ def ip_to_country_name(ip: str) -> str:
         return "Unknown"
 
 
+# ── GeoLite2-ASN reader ──────────────────────────────────────────────────────
+_asn_reader: geoip2.database.Reader | None = None
+
+
+def get_asn_reader() -> geoip2.database.Reader | None:
+    global _asn_reader
+    if _asn_reader is None and Path(MMDB_ASN_PATH).exists():
+        _asn_reader = geoip2.database.Reader(MMDB_ASN_PATH)
+    return _asn_reader
+
+
+@lru_cache(maxsize=8192)
+def ip_to_asn(ip: str) -> tuple[int, str]:
+    """Return (asn_number, org_name) or (0, '') if unknown / private."""
+    reader = get_asn_reader()
+    if reader is None:
+        return (0, "")
+    try:
+        r = reader.asn(ip)
+        return (r.autonomous_system_number or 0, r.autonomous_system_organization or "")
+    except (geoip2.errors.AddressNotFoundError, ValueError):
+        return (0, "")
+
+
+# ── Jurisdiction classification ──────────────────────────────────────────────
+_asn_to_tags:     dict[int, list[str]] = {}
+_pattern_to_tags: list[tuple[str, list[str]]] = []
+
+
+def _resolve_tags(entity_id: str, entities: dict, visited: frozenset = frozenset()) -> list[str]:
+    """Walk the ownership chain up to the UBO and collect jurisdiction tags."""
+    if entity_id in visited:
+        return []
+    entity = entities.get(entity_id, {})
+    tags: list[str] = list(entity.get("jurisdiction_tags") or [])
+    parent_id = entity.get("parent")
+    if parent_id:
+        for t in _resolve_tags(parent_id, entities, visited | {entity_id}):
+            if t not in tags:
+                tags.append(t)
+    return tags
+
+
+def _load_jurisdiction_data() -> None:
+    """Build ASN-number → tags and MaxMind-pattern → tags lookup tables."""
+    global _asn_to_tags, _pattern_to_tags
+    graph_path = Path(CLASSIFICATION_DIR) / "parent_company_graph.yaml"
+    if not graph_path.exists():
+        return
+    with open(graph_path, encoding="utf-8") as f:
+        graph = yaml.safe_load(f)
+    entities: dict = graph.get("entities", {})
+
+    asn_map: dict[int, list[str]] = {}
+    pattern_list: list[tuple[str, list[str]]] = []
+
+    for entity_id, entity in entities.items():
+        tags = _resolve_tags(entity_id, entities)
+        if not tags:
+            continue
+        for asn in (entity.get("asn_list") or []):
+            if isinstance(asn, int) and asn > 0:
+                merged = list({*asn_map.get(asn, []), *tags})
+                asn_map[asn] = merged
+        for pattern in (entity.get("maxmind_patterns") or []):
+            if pattern:
+                pattern_list.append((str(pattern).lower(), tags))
+
+    _asn_to_tags     = asn_map
+    _pattern_to_tags = pattern_list
+
+
+def get_jurisdiction_tags(asn_number: int, org_name: str) -> list[str]:
+    """Return jurisdiction tags for an IP based on ASN number or MaxMind org name."""
+    if asn_number and asn_number in _asn_to_tags:
+        return _asn_to_tags[asn_number]
+    if org_name:
+        org_lower = org_name.lower()
+        for pattern, tags in _pattern_to_tags:
+            if pattern in org_lower:
+                return tags
+    return []
+
+
 # ── SQLite helpers ──────────────────────────────────────────────────────────
 def get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=10)
@@ -123,10 +213,14 @@ def ensure_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ensure_db()
-    get_geoip_reader()   # warm up on startup
+    get_geoip_reader()
+    get_asn_reader()
+    _load_jurisdiction_data()
     yield
     if _geoip_reader:
         _geoip_reader.close()
+    if _asn_reader:
+        _asn_reader.close()
 
 
 # ── App ─────────────────────────────────────────────────────────────────────
@@ -166,7 +260,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def classify(iso: str) -> str:
+def classify(iso: str, jurisdiction_tags: list) -> str:
+    if jurisdiction_tags:
+        return "non-eu"
     if iso == "XX":
         return "unknown"
     if iso in EU_COUNTRIES:
@@ -176,12 +272,25 @@ def classify(iso: str) -> str:
 
 def enrich_row(row: sqlite3.Row) -> dict:
     d = dict(row)
-    iso  = ip_to_country(d["dst_ip"])
-    name = ip_to_country_name(d["dst_ip"])
-    d["dst_country_iso"]  = iso
-    d["dst_country_name"] = name
-    d["category"]         = classify(iso)
+    iso              = ip_to_country(d["dst_ip"])
+    name             = ip_to_country_name(d["dst_ip"])
+    asn_number, org  = ip_to_asn(d["dst_ip"])
+    j_tags           = get_jurisdiction_tags(asn_number, org)
+    d["dst_country_iso"]   = iso
+    d["dst_country_name"]  = name
+    d["asn"]               = asn_number or None
+    d["org_name"]          = org or None
+    d["jurisdiction_tags"] = j_tags
+    d["category"]          = classify(iso, j_tags)
     return d
+
+
+@lru_cache(maxsize=4096)
+def _is_private_ip(ip: str) -> bool:
+    try:
+        return ipaddress.ip_address(ip).is_private
+    except ValueError:
+        return False
 
 
 def all_traffic(limit: int = 50000) -> list[dict]:
@@ -189,19 +298,26 @@ def all_traffic(limit: int = 50000) -> list[dict]:
         rows = conn.execute(
             "SELECT * FROM traffic ORDER BY last_seen DESC LIMIT ?", (limit,)
         ).fetchall()
-    return [enrich_row(r) for r in rows]
+    enriched = [enrich_row(r) for r in rows]
+    if FILTER_PRIVATE_DST:
+        enriched = [r for r in enriched if not _is_private_ip(r["dst_ip"])]
+    return enriched
 
 
 # ── Routes — Health ─────────────────────────────────────────────────────────
 @app.get("/api/health")
 def health():
-    mmdb_ok = Path(MMDB_PATH).exists()
-    db_ok   = Path(DB_PATH).exists()
+    mmdb_ok     = Path(MMDB_PATH).exists()
+    mmdb_asn_ok = Path(MMDB_ASN_PATH).exists()
+    db_ok       = Path(DB_PATH).exists()
     return {
-        "status": "ok",
-        "db": db_ok,
-        "mmdb": mmdb_ok,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status":               "ok",
+        "db":                   db_ok,
+        "mmdb":                 mmdb_ok,
+        "mmdb_asn":             mmdb_asn_ok,
+        "jurisdiction_entries": len(_asn_to_tags),
+        "filter_private_dst":   FILTER_PRIVATE_DST,
+        "timestamp":            datetime.now(timezone.utc).isoformat(),
     }
 
 

@@ -4,3 +4,4 @@ geoip2==4.8.1
 pydantic==2.10.3
 dpkt==1.9.8
 python-multipart>=0.0.26
+pyyaml>=6.0
