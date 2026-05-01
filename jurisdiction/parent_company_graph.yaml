@@ -1,0 +1,3097 @@
+# ==============================================================================
+# parent_company_graph.yaml
+# ==============================================================================
+# Purpose   : Single source of truth for corporate ownership chains, ASN mappings,
+#             MaxMind pattern matching, and jurisdiction tag assignments.
+#             Jurisdiction tag definitions live in jurisdiction_policy.yaml.
+#
+# Maintainer: Network Security / SOC Team
+# Review    : Quarterly + on significant M&A events
+# Version   : 2.0.0
+# Updated   : 2026-04
+#
+# STRUCTURE:
+#   - tier 0 = Ultimate Beneficial Owner (UBO) — no parent reference
+#   - tier 1 = Direct subsidiary of UBO
+#   - tier 2+ = Deeper subsidiaries
+#
+# TAGGING RULES:
+#   - jurisdiction_tags are set ONLY on tier-0 (UBO) entities
+#   - Tags cascade automatically down the ownership chain via graph traversal
+#   - Do NOT duplicate tags on child entities — set them on the root only
+#   - Exception: a child incorporated in a DIFFERENT jurisdiction may carry
+#     additional tags (e.g. UK subsidiary of US parent → UK_IPA + cascade US_CLOUD_ACT)
+#   - Exception: a child with significant R&D operations in a different
+#     jurisdiction may carry additional tags (e.g. Wiz IL R&D under US parent)
+#
+# OWNERSHIP POLICY (aligned with jurisdiction_policy.yaml v2.0):
+#   - PE-owned entities: tagged by incorporation of operational entity, not PE fund
+#   - Joint Ventures: tag by jurisdiction of majority owner (≥50%)
+#   - Hong Kong / Cayman holdings without PRC operational control: note only,
+#     no CN_NSL tag (e.g. CK Hutchison)
+#
+# CHANGELOG:
+#   2.0.0 (2026-04) : Expanded to 9 jurisdictions (added AU_TOLA, RU_SORM,
+#                     KR_PIPA, IN_DPDP, IL_NSL). Added Comcast, Liberty Global,
+#                     T-Mobile US, Charter as new tier-0 US entities.
+#                     Restructured Sky UK under Comcast UBO.
+#                     Restructured Vodafone UK as VodafoneThree JV under
+#                     Vodafone Group plc. Added extensive networking hardware,
+#                     security vendor, SaaS, and international sections.
+#   1.0.0 (2025-04) : Initial release.
+#
+# SOURCES:
+#   - SEC EDGAR (US incorporations)
+#   - Companies House (UK incorporations)
+#   - Handelsregister (DE incorporations)
+#   - GLEIF LEI database
+#   - RIPE / ARIN / APNIC / LACNIC / AFRINIC WHOIS
+#   - MaxMind GeoLite2-ASN (org_name field)
+#   - RouteViews / RIPE RIS BGP dumps
+#   - Investor relations filings (10-K, 20-F, annual reports)
+#   - CMA / EU Commission / DOJ merger approvals
+# ==============================================================================
+
+meta:
+  schema_version: "1.0"
+  policy_ref: "jurisdiction_policy.yaml"
+  language: "en"
+
+# ==============================================================================
+# ENTITIES
+# ==============================================================================
+
+entities:
+
+  # ============================================================================
+  # MICROSOFT
+  # ============================================================================
+
+  MSFT_ROOT:
+    legal_name: "Microsoft Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "MSFT"
+    lei: "INR2EJN1ERAN0W5ZP974"
+    asn_list: [8075, 8068, 8069, 3598]
+    maxmind_patterns:
+      - "MICROSOFT-CORP-MSN-AS-BLOCK"
+      - "MICROSOFT-CORP"
+      - "MSFT"
+
+  MSFT_IRELAND:
+    legal_name: "Microsoft Ireland Operations Limited"
+    country_of_incorporation: "IE"
+    parent: MSFT_ROOT
+    tier: 1
+    note: "EU contracting entity — UBO remains MSFT_ROOT"
+    maxmind_patterns:
+      - "MICROSOFT IRELAND"
+      - "MICROSOFT-IE"
+
+  GITHUB:
+    legal_name: "GitHub, Inc."
+    country_of_incorporation: "US"
+    parent: MSFT_ROOT
+    tier: 1
+    acquired: "2018-10"
+    asn_list: [36459]
+    maxmind_patterns:
+      - "GITHUB"
+      - "GITHUBINC"
+
+  LINKEDIN_CORP:
+    legal_name: "LinkedIn Corporation"
+    country_of_incorporation: "US"
+    parent: MSFT_ROOT
+    tier: 1
+    acquired: "2016-12"
+    maxmind_patterns:
+      - "LINKEDIN"
+
+  LINKEDIN_IRELAND:
+    legal_name: "LinkedIn Ireland Unlimited Company"
+    country_of_incorporation: "IE"
+    parent: LINKEDIN_CORP
+    tier: 2
+    note: "EU data controller entity — UBO MSFT_ROOT"
+    maxmind_patterns:
+      - "LINKEDIN IRELAND"
+      - "LINKEDIN-IE"
+
+  NUANCE:
+    legal_name: "Nuance Communications, Inc."
+    country_of_incorporation: "US"
+    parent: MSFT_ROOT
+    tier: 1
+    acquired: "2022-03"
+    maxmind_patterns:
+      - "NUANCE"
+      - "NUANCE-COMM"
+
+  ACTIVISION_BLIZZARD:
+    legal_name: "Activision Blizzard, Inc."
+    country_of_incorporation: "US"
+    parent: MSFT_ROOT
+    tier: 1
+    acquired: "2023-10"
+    maxmind_patterns:
+      - "ACTIVISION"
+      - "BLIZZARD"
+      - "KING-DIGITAL"
+      - "BATTLENET"
+
+  MOJANG:
+    legal_name: "Mojang Studios AB"
+    country_of_incorporation: "SE"
+    parent: MSFT_ROOT
+    tier: 1
+    acquired: "2014-11"
+    maxmind_patterns:
+      - "MOJANG"
+
+  # ============================================================================
+  # ALPHABET / GOOGLE
+  # ============================================================================
+
+  GOOGL_ROOT:
+    legal_name: "Alphabet Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "GOOGL"
+    asn_list: [15169, 396982, 19527]
+    maxmind_patterns:
+      - "GOOGLE"
+      - "GOOGL"
+      - "GOOGLE-CLOUD"
+      - "GOOGLE LLC"
+
+  GOOGLE_IRELAND:
+    legal_name: "Google Ireland Limited"
+    country_of_incorporation: "IE"
+    parent: GOOGL_ROOT
+    tier: 1
+    note: "EU contracting entity — UBO GOOGL_ROOT"
+    maxmind_patterns:
+      - "GOOGLE IRELAND"
+      - "GOOGLE-IE"
+
+  YOUTUBE:
+    legal_name: "YouTube, LLC"
+    country_of_incorporation: "US"
+    parent: GOOGL_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "YOUTUBE"
+      - "YOUTUBE LLC"
+
+  DEEPMIND:
+    legal_name: "Google DeepMind"
+    country_of_incorporation: "GB"
+    parent: GOOGL_ROOT
+    tier: 1
+    note: "UK incorporation — UBO still GOOGL_ROOT → US_CLOUD_ACT applies"
+    maxmind_patterns:
+      - "DEEPMIND"
+
+  MANDIANT:
+    legal_name: "Mandiant, Inc."
+    country_of_incorporation: "US"
+    parent: GOOGL_ROOT
+    tier: 1
+    acquired: "2022-09"
+    maxmind_patterns:
+      - "MANDIANT"
+      - "FIREEYE"
+
+  WAZE:
+    legal_name: "Waze Mobile Limited"
+    country_of_incorporation: "IE"
+    parent: GOOGL_ROOT
+    tier: 1
+    acquired: "2013-06"
+    maxmind_patterns:
+      - "WAZE"
+
+  WIZ:
+    legal_name: "Wiz, Inc."
+    country_of_incorporation: "US"
+    parent: GOOGL_ROOT
+    tier: 1
+    acquired: "2026-03"
+    jurisdiction_tags: [IL_NSL]
+    note: >
+      Acquired by Google on 2026-03-11 ($32B, largest Google acquisition).
+      HQ in New York, but founded by ex-Unit 8200 officers with major R&D
+      operations in Tel Aviv. IL_NSL added as exception tag alongside
+      cascading US_CLOUD_ACT + US_FISA_702 from GOOGL_ROOT.
+    maxmind_patterns:
+      - "WIZ"
+      - "WIZ-INC"
+      - "WIZ SECURITY"
+
+  # ============================================================================
+  # AMAZON
+  # ============================================================================
+
+  AMZN_ROOT:
+    legal_name: "Amazon.com, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "AMZN"
+
+  AWS:
+    legal_name: "Amazon Web Services, Inc."
+    country_of_incorporation: "US"
+    parent: AMZN_ROOT
+    tier: 1
+    asn_list: [16509, 14618, 7224]
+    maxmind_patterns:
+      - "AMAZON-02"
+      - "AMAZON-AES"
+      - "AMAZON-CF"
+      - "AWS"
+      - "AMAZON"
+
+  AWS_EMEA:
+    legal_name: "Amazon Web Services EMEA SARL"
+    country_of_incorporation: "LU"
+    parent: AWS
+    tier: 2
+    note: "EU contracting entity — UBO AMZN_ROOT"
+    maxmind_patterns:
+      - "AMAZON-EMEA"
+      - "AWS-EMEA"
+
+  TWITCH:
+    legal_name: "Twitch Interactive, Inc."
+    country_of_incorporation: "US"
+    parent: AMZN_ROOT
+    tier: 1
+    acquired: "2014-08"
+    maxmind_patterns:
+      - "TWITCH"
+      - "TWITCHINTERACTIVE"
+
+  RING:
+    legal_name: "Ring LLC"
+    country_of_incorporation: "US"
+    parent: AMZN_ROOT
+    tier: 1
+    acquired: "2018-02"
+    maxmind_patterns:
+      - "RING-NET"
+      - "RING LLC"
+
+  ZOOX:
+    legal_name: "Zoox, Inc."
+    country_of_incorporation: "US"
+    parent: AMZN_ROOT
+    tier: 1
+    acquired: "2020-07"
+    maxmind_patterns:
+      - "ZOOX"
+
+  # ============================================================================
+  # META PLATFORMS
+  # ============================================================================
+
+  META_ROOT:
+    legal_name: "Meta Platforms, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "META"
+    asn_list: [32934, 63293]
+    maxmind_patterns:
+      - "TFBNET"
+      - "META"
+      - "FACEBOOK"
+      - "METACORP"
+
+  META_IRELAND:
+    legal_name: "Meta Platforms Ireland Limited"
+    country_of_incorporation: "IE"
+    parent: META_ROOT
+    tier: 1
+    note: "EU data controller entity per GDPR — UBO META_ROOT"
+    maxmind_patterns:
+      - "FACEBOOK IRELAND"
+      - "META IRELAND"
+      - "TFBNET-IE"
+
+  INSTAGRAM:
+    legal_name: "Instagram, LLC"
+    country_of_incorporation: "US"
+    parent: META_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "INSTAGRAM"
+
+  WHATSAPP:
+    legal_name: "WhatsApp LLC"
+    country_of_incorporation: "US"
+    parent: META_ROOT
+    tier: 1
+    acquired: "2014-02"
+    maxmind_patterns:
+      - "WHATSAPP"
+
+  OCULUS:
+    legal_name: "Oculus VR, LLC"
+    country_of_incorporation: "US"
+    parent: META_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "OCULUS"
+
+  # ============================================================================
+  # APPLE
+  # ============================================================================
+
+  APPLE_ROOT:
+    legal_name: "Apple Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "AAPL"
+    asn_list: [714, 6185]
+    maxmind_patterns:
+      - "APPLE"
+      - "APPLE-ENGINEERING"
+      - "APPLE-WWNET"
+      - "APPLE INC"
+
+  APPLE_DISTRIBUTION_INTL:
+    legal_name: "Apple Distribution International Ltd."
+    country_of_incorporation: "IE"
+    parent: APPLE_ROOT
+    tier: 1
+    note: "EU distribution entity — UBO APPLE_ROOT"
+    maxmind_patterns:
+      - "APPLE DISTRIBUTION"
+
+  # ============================================================================
+  # ORACLE
+  # ============================================================================
+
+  ORACLE_ROOT:
+    legal_name: "Oracle Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "ORCL"
+    asn_list: [31898, 31896, 46521]
+    maxmind_patterns:
+      - "ORACLE-BMC"
+      - "ORACLE"
+      - "ORACLECLOUD"
+
+  NETSUITE:
+    legal_name: "Oracle NetSuite Inc."
+    country_of_incorporation: "US"
+    parent: ORACLE_ROOT
+    tier: 1
+    acquired: "2016-11"
+    maxmind_patterns:
+      - "NETSUITE"
+      - "NETSUITE-INC"
+
+  CERNER:
+    legal_name: "Cerner Corporation (Oracle Health)"
+    country_of_incorporation: "US"
+    parent: ORACLE_ROOT
+    tier: 1
+    acquired: "2022-06"
+    note: "Renamed Oracle Health post-acquisition"
+    maxmind_patterns:
+      - "CERNER"
+      - "ORACLE-HEALTH"
+      - "ORACLE HEALTH"
+
+  # ============================================================================
+  # SALESFORCE
+  # ============================================================================
+
+  SALESFORCE_ROOT:
+    legal_name: "Salesforce, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "CRM"
+    asn_list: [22394]
+    maxmind_patterns:
+      - "SALESFORCE"
+      - "SFDC"
+
+  SLACK:
+    legal_name: "Slack Technologies, LLC"
+    country_of_incorporation: "US"
+    parent: SALESFORCE_ROOT
+    tier: 1
+    acquired: "2021-07"
+    asn_list: [397213]
+    maxmind_patterns:
+      - "SLACK"
+      - "SLACK-NET"
+      - "SLACKNET"
+
+  TABLEAU:
+    legal_name: "Tableau Software, LLC"
+    country_of_incorporation: "US"
+    parent: SALESFORCE_ROOT
+    tier: 1
+    acquired: "2019-08"
+    maxmind_patterns:
+      - "TABLEAU"
+
+  MULESOFT:
+    legal_name: "MuleSoft, LLC"
+    country_of_incorporation: "US"
+    parent: SALESFORCE_ROOT
+    tier: 1
+    acquired: "2018-05"
+    maxmind_patterns:
+      - "MULESOFT"
+
+  # ============================================================================
+  # IBM
+  # ============================================================================
+
+  IBM_ROOT:
+    legal_name: "International Business Machines Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "IBM"
+    asn_list: [36351, 2685, 4513]
+    maxmind_patterns:
+      - "IBM"
+      - "SOFTLAYER"
+      - "IBM-CLOUD"
+      - "IBMCLOUD"
+
+  REDHAT:
+    legal_name: "Red Hat, Inc."
+    country_of_incorporation: "US"
+    parent: IBM_ROOT
+    tier: 1
+    acquired: "2019-07"
+    maxmind_patterns:
+      - "REDHAT"
+      - "RED HAT"
+
+  HASHICORP:
+    legal_name: "HashiCorp, Inc."
+    country_of_incorporation: "US"
+    parent: IBM_ROOT
+    tier: 1
+    acquired: "2025-02"
+    note: "IBM completed HashiCorp acquisition 2025-02 ($6.4B)"
+    maxmind_patterns:
+      - "HASHICORP"
+      - "HASHICORP-INC"
+
+  # ============================================================================
+  # KYNDRYL (spun off from IBM, 2021)
+  # ============================================================================
+
+  KYNDRYL_ROOT:
+    legal_name: "Kyndryl Holdings, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "KD"
+    note: "Spun off from IBM in November 2021 as independent public company"
+    maxmind_patterns:
+      - "KYNDRYL"
+      - "KYNDRYL-HOLDINGS"
+
+  # ============================================================================
+  # CLOUDFLARE
+  # ============================================================================
+
+  CLOUDFLARE_ROOT:
+    legal_name: "Cloudflare, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "NET"
+    asn_list: [13335, 209242]
+    maxmind_patterns:
+      - "CLOUDFLARE"
+      - "CLOUDFLARENET"
+
+  # ============================================================================
+  # AKAMAI
+  # ============================================================================
+
+  AKAMAI_ROOT:
+    legal_name: "Akamai Technologies, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "AKAM"
+    asn_list: [20940, 16625]
+    maxmind_patterns:
+      - "AKAMAI"
+      - "AKAMAI-AS"
+      - "AKAMAI TECHNOLOGIES"
+
+  LINODE:
+    legal_name: "Linode, LLC (Akamai Cloud)"
+    country_of_incorporation: "US"
+    parent: AKAMAI_ROOT
+    tier: 1
+    acquired: "2022-03"
+    asn_list: [63949]
+    maxmind_patterns:
+      - "LINODE"
+      - "AKAMAI-LINODE"
+
+  # ============================================================================
+  # FASTLY
+  # ============================================================================
+
+  FASTLY_ROOT:
+    legal_name: "Fastly, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "FSLY"
+    asn_list: [54113]
+    maxmind_patterns:
+      - "FASTLY"
+
+  # ============================================================================
+  # DIGITALOCEAN
+  # ============================================================================
+
+  DIGITALOCEAN_ROOT:
+    legal_name: "DigitalOcean, LLC"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "DOCN"
+    asn_list: [14061]
+    maxmind_patterns:
+      - "DIGITALOCEAN"
+      - "DIGITALOCEAN-ASN"
+
+  # ============================================================================
+  # ZSCALER
+  # ============================================================================
+
+  ZSCALER_ROOT:
+    legal_name: "Zscaler, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "ZS"
+    asn_list: [22616]
+    maxmind_patterns:
+      - "ZSCALER"
+
+  # ============================================================================
+  # PALO ALTO NETWORKS
+  # ============================================================================
+
+  PANW_ROOT:
+    legal_name: "Palo Alto Networks, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "PANW"
+    asn_list: [36040]
+    maxmind_patterns:
+      - "PALOALTO"
+      - "PALO-ALTO-NETWORKS"
+      - "PANW"
+
+  # ============================================================================
+  # CROWDSTRIKE
+  # ============================================================================
+
+  CRWD_ROOT:
+    legal_name: "CrowdStrike Holdings, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "CRWD"
+    asn_list: [397073]
+    maxmind_patterns:
+      - "CROWDSTRIKE"
+
+  # ============================================================================
+  # FORTINET
+  # ============================================================================
+
+  FORTINET_ROOT:
+    legal_name: "Fortinet, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "FTNT"
+    asn_list: [40934]
+    maxmind_patterns:
+      - "FORTINET"
+      - "FORTINET-INC"
+
+  # ============================================================================
+  # SENTINELONE
+  # ============================================================================
+
+  SENTINELONE_ROOT:
+    legal_name: "SentinelOne, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, IL_NSL]
+    tier: 0
+    stock_ticker: "S"
+    note: >
+      US-incorporated (Delaware / Mountain View HQ) but founded in Tel Aviv
+      with continuing major IL R&D. IL_NSL added as exception tag.
+    asn_list: [395773]
+    maxmind_patterns:
+      - "SENTINELONE"
+      - "SENTINEL-ONE"
+
+  # ============================================================================
+  # OKTA
+  # ============================================================================
+
+  OKTA_ROOT:
+    legal_name: "Okta, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "OKTA"
+    note: "Identity provider — qualifies as ECSP for FISA §702 purposes"
+    asn_list: [26815]
+    maxmind_patterns:
+      - "OKTA"
+      - "OKTA-INC"
+
+  AUTH0:
+    legal_name: "Auth0, Inc."
+    country_of_incorporation: "US"
+    parent: OKTA_ROOT
+    tier: 1
+    acquired: "2021-05"
+    maxmind_patterns:
+      - "AUTH0"
+      - "AUTHZERO"
+
+  # ============================================================================
+  # PROOFPOINT
+  # ============================================================================
+
+  PROOFPOINT_ROOT:
+    legal_name: "Proofpoint, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    note: >
+      Delaware-incorporated, Sunnyvale HQ. Owned by Thoma Bravo (PE, US)
+      since 2021 — per ownership policy, tagging follows operational
+      entity incorporation, not PE fund domicile. Still US_CLOUD_ACT.
+      ECSP status (email security) triggers US_FISA_702.
+    asn_list: [22843]
+    maxmind_patterns:
+      - "PROOFPOINT"
+      - "PROOFPOINT-ASN"
+
+  # ============================================================================
+  # TRELLIX (formerly McAfee Enterprise + FireEye products)
+  # ============================================================================
+
+  TRELLIX_ROOT:
+    legal_name: "Musarubra US LLC (Trellix)"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    note: >
+      Formed 2022 by merger of McAfee Enterprise and FireEye products.
+      Owned by Symphony Technology Group (PE, US). Per ownership policy,
+      tagging follows operational incorporation — remains US_CLOUD_ACT.
+    maxmind_patterns:
+      - "TRELLIX"
+      - "MCAFEE"
+      - "MUSARUBRA"
+
+  SKYHIGH:
+    legal_name: "Skyhigh Security LLC"
+    country_of_incorporation: "US"
+    parent: TRELLIX_ROOT
+    tier: 1
+    note: "SSE/SASE spin-off from McAfee Enterprise cloud business"
+    maxmind_patterns:
+      - "SKYHIGH"
+      - "SKYHIGH-SECURITY"
+
+  # ============================================================================
+  # TENABLE
+  # ============================================================================
+
+  TENABLE_ROOT:
+    legal_name: "Tenable Holdings, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "TENB"
+    maxmind_patterns:
+      - "TENABLE"
+      - "TENABLE-NETWORK"
+
+  # ============================================================================
+  # RAPID7
+  # ============================================================================
+
+  RAPID7_ROOT:
+    legal_name: "Rapid7, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "RPD"
+    maxmind_patterns:
+      - "RAPID7"
+      - "RAPID7-LLC"
+
+  # ============================================================================
+  # VARONIS
+  # ============================================================================
+
+  VARONIS_ROOT:
+    legal_name: "Varonis Systems, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, IL_NSL]
+    tier: 0
+    stock_ticker: "VRNS"
+    note: >
+      Delaware-incorporated, New York HQ — but founded in Israel
+      with major R&D center in Herzliya. IL_NSL exception tag applied
+      due to significant IL R&D operations.
+    maxmind_patterns:
+      - "VARONIS"
+      - "VARONIS-SYSTEMS"
+
+  # ============================================================================
+  # AT&T
+  # ============================================================================
+
+  ATT_ROOT:
+    legal_name: "AT&T Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "T"
+    asn_list: [7018, 7132, 11427]
+    maxmind_patterns:
+      - "ATT-INTERNET"
+      - "AT&T"
+      - "SBCIS-SIS"
+      - "UVERSE"
+
+  # ============================================================================
+  # VERIZON
+  # ============================================================================
+
+  VZ_ROOT:
+    legal_name: "Verizon Communications Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "VZ"
+    asn_list: [701, 702, 703, 6167]
+    maxmind_patterns:
+      - "UUNET"
+      - "VERIZON"
+      - "MCI-COMM"
+
+  # ============================================================================
+  # LUMEN / CENTURYLINK
+  # ============================================================================
+
+  LUMEN_ROOT:
+    legal_name: "Lumen Technologies, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "LUMN"
+    asn_list: [209, 3561, 11213]
+    maxmind_patterns:
+      - "CENTURYLINK"
+      - "LUMEN"
+      - "QWEST"
+      - "LEVEL3"
+
+  # ============================================================================
+  # TWILIO
+  # ============================================================================
+
+  TWILIO_ROOT:
+    legal_name: "Twilio Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "TWLO"
+    asn_list: [54874]
+    maxmind_patterns:
+      - "TWILIO"
+
+  # ============================================================================
+  # COMCAST (US content + ISP — UBO of Sky UK)
+  # ============================================================================
+
+  COMCAST_ROOT:
+    legal_name: "Comcast Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "CMCSA"
+    note: "Major US ISP (Xfinity) + NBCUniversal + Sky (UK). ECSP per FISA §702."
+    asn_list: [7922, 33651, 33652, 33287, 36732]
+    maxmind_patterns:
+      - "COMCAST"
+      - "COMCAST-7922"
+      - "COMCAST-AS"
+      - "XFINITY"
+
+  NBCUNIVERSAL:
+    legal_name: "NBCUniversal Media, LLC"
+    country_of_incorporation: "US"
+    parent: COMCAST_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "NBCUNIVERSAL"
+      - "NBC-UNIVERSAL"
+      - "NBCUNI"
+
+  # ============================================================================
+  # CHARTER COMMUNICATIONS (Spectrum)
+  # ============================================================================
+
+  CHARTER_ROOT:
+    legal_name: "Charter Communications, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "CHTR"
+    note: "Second-largest US cable ISP (Spectrum brand). ECSP per FISA §702."
+    asn_list: [20115, 10796, 11351, 11426, 12271]
+    maxmind_patterns:
+      - "CHARTER"
+      - "CHARTER-NET"
+      - "SPECTRUM"
+      - "TWC-"
+      - "ROAD-RUNNER"
+      - "RR-NYSREGION"
+
+  # ============================================================================
+  # T-MOBILE US
+  # Majority-owned by Deutsche Telekom (DE, ~51%) but US-incorporated.
+  # Per tagging rule, US operations tagged US_CLOUD_ACT regardless of
+  # DE parent. Deutsche Telekom itself not included (EU-untagged scope).
+  # ============================================================================
+
+  TMOBILE_US:
+    legal_name: "T-Mobile US, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "TMUS"
+    note: >
+      US-incorporated carrier, ~51% owned by Deutsche Telekom AG (Germany).
+      Parent DE entity omitted per scope policy (untagged jurisdictions
+      not included). US operational entity tagged as tier-0 independently.
+    asn_list: [21928, 22394]
+    maxmind_patterns:
+      - "T-MOBILE"
+      - "TMOBILE"
+      - "T-MOBILE-AS21928"
+      - "SPRINT"
+      - "SPRINTLINK"
+
+  # ============================================================================
+  # LIBERTY GLOBAL (US cable holdings — 50% owner of Virgin Media O2)
+  # ============================================================================
+
+  LIBERTY_GLOBAL_ROOT:
+    legal_name: "Liberty Global Ltd."
+    country_of_incorporation: "BM"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "LBTYA"
+    note: >
+      Bermuda-incorporated, Denver HQ, listed on NASDAQ and trading in US.
+      US operational and listing nexus → US_CLOUD_ACT applies. Owns
+      substantial cable/mobile assets across Europe (Sunrise CH, Telenet
+      BE/NL, 50% of Virgin Media O2 UK JV with Telefónica).
+    maxmind_patterns:
+      - "LIBERTY-GLOBAL"
+      - "LIBERTYGLOBAL"
+      - "LGI-NETWORKS"
+
+  SUNRISE_CH:
+    legal_name: "Sunrise Communications AG"
+    country_of_incorporation: "CH"
+    parent: LIBERTY_GLOBAL_ROOT
+    tier: 1
+    note: "Swiss telco. Spun off 2024-11 as separate listing; LBTYA retains majority."
+    asn_list: [6730]
+    maxmind_patterns:
+      - "SUNRISE"
+      - "SUNRISE-CH"
+
+  TELENET:
+    legal_name: "Telenet BV"
+    country_of_incorporation: "BE"
+    parent: LIBERTY_GLOBAL_ROOT
+    tier: 1
+    asn_list: [6848]
+    maxmind_patterns:
+      - "TELENET"
+      - "TELENET-AS"
+
+  # ============================================================================
+  # ADOBE
+  # ============================================================================
+
+  ADOBE_ROOT:
+    legal_name: "Adobe Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "ADBE"
+    note: "Creative Cloud + Document Cloud qualify as ECSPs for FISA §702"
+    asn_list: [4323, 15224]
+    maxmind_patterns:
+      - "ADOBE"
+      - "ADOBE-SYSTEMS"
+      - "ADOBESYSTEMS"
+
+  # ============================================================================
+  # SERVICENOW
+  # ============================================================================
+
+  SERVICENOW_ROOT:
+    legal_name: "ServiceNow, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "NOW"
+    asn_list: [16839, 400065]
+    maxmind_patterns:
+      - "SERVICENOW"
+      - "SERVICE-NOW"
+
+  # ============================================================================
+  # WORKDAY
+  # ============================================================================
+
+  WORKDAY_ROOT:
+    legal_name: "Workday, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "WDAY"
+    asn_list: [46489]
+    maxmind_patterns:
+      - "WORKDAY"
+      - "WORKDAY-INC"
+
+  # ============================================================================
+  # SNOWFLAKE
+  # ============================================================================
+
+  SNOWFLAKE_ROOT:
+    legal_name: "Snowflake Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "SNOW"
+    note: "Pure IaaS/PaaS cloud data platform — runs on AWS/Azure/GCP infra"
+    maxmind_patterns:
+      - "SNOWFLAKE"
+      - "SNOWFLAKE-INC"
+
+  # ============================================================================
+  # MONGODB
+  # ============================================================================
+
+  MONGODB_ROOT:
+    legal_name: "MongoDB, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "MDB"
+    maxmind_patterns:
+      - "MONGODB"
+      - "MONGODB-ATLAS"
+
+  # ============================================================================
+  # DATADOG
+  # ============================================================================
+
+  DATADOG_ROOT:
+    legal_name: "Datadog, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "DDOG"
+    asn_list: [26415, 396263]
+    maxmind_patterns:
+      - "DATADOG"
+      - "DATADOG-INC"
+
+  # ============================================================================
+  # ZOOM
+  # ============================================================================
+
+  ZOOM_ROOT:
+    legal_name: "Zoom Communications, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "ZM"
+    note: "ECSP — video conferencing and messaging services per FISA §702"
+    asn_list: [32299, 397213]
+    maxmind_patterns:
+      - "ZOOM"
+      - "ZOOM-COMMS"
+      - "ZM-"
+
+  # ============================================================================
+  # DROPBOX
+  # ============================================================================
+
+  DROPBOX_ROOT:
+    legal_name: "Dropbox, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "DBX"
+    note: "Cloud storage ECSP per FISA §702"
+    asn_list: [19679]
+    maxmind_patterns:
+      - "DROPBOX"
+
+  # ============================================================================
+  # BOX
+  # ============================================================================
+
+  BOX_ROOT:
+    legal_name: "Box, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "BOX"
+    note: "Enterprise content / cloud storage ECSP per FISA §702"
+    maxmind_patterns:
+      - "BOX-INC"
+      - "BOXCOM"
+
+  # ============================================================================
+  # ATLASSIAN
+  # ============================================================================
+
+  ATLASSIAN_ROOT:
+    legal_name: "Atlassian Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "TEAM"
+    note: >
+      Re-domiciled from UK to Delaware (US) in 2022. Jira / Confluence /
+      Trello / Bitbucket — communications and collaboration services
+      trigger ECSP classification.
+    asn_list: [133530]
+    maxmind_patterns:
+      - "ATLASSIAN"
+      - "ATLASSIAN-NET"
+      - "ATL-ASHBURN"
+
+  # ============================================================================
+  # GITLAB
+  # ============================================================================
+
+  GITLAB_ROOT:
+    legal_name: "GitLab Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "GTLB"
+    note: "Re-domiciled from the Netherlands to Delaware (US) prior to 2021 IPO"
+    maxmind_patterns:
+      - "GITLAB"
+      - "GITLAB-INC"
+
+  # ============================================================================
+  # HUBSPOT
+  # ============================================================================
+
+  HUBSPOT_ROOT:
+    legal_name: "HubSpot, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "HUBS"
+    note: "Marketing platform with email/communications — ECSP per FISA §702"
+    maxmind_patterns:
+      - "HUBSPOT"
+      - "HUBSPOT-INC"
+
+  # ============================================================================
+  # STRIPE
+  # ============================================================================
+
+  STRIPE_ROOT:
+    legal_name: "Stripe, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    note: "Private company. Delaware-incorporated, SF + Dublin dual HQ."
+    asn_list: [16509]
+    maxmind_patterns:
+      - "STRIPE"
+      - "STRIPE-INC"
+
+  # ============================================================================
+  # PAYPAL
+  # ============================================================================
+
+  PAYPAL_ROOT:
+    legal_name: "PayPal Holdings, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "PYPL"
+    note: "Communications/messaging via PayPal and Venmo trigger ECSP status"
+    asn_list: [17012, 23265]
+    maxmind_patterns:
+      - "PAYPAL"
+      - "PAYPAL-INC"
+
+  VENMO:
+    legal_name: "Venmo, LLC"
+    country_of_incorporation: "US"
+    parent: PAYPAL_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "VENMO"
+
+  # ============================================================================
+  # NETFLIX
+  # ============================================================================
+
+  NETFLIX_ROOT:
+    legal_name: "Netflix, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "NFLX"
+    asn_list: [2906, 40027, 55095]
+    maxmind_patterns:
+      - "NETFLIX"
+      - "NETFLIX-INC"
+      - "AS-NFLX"
+
+  # ============================================================================
+  # ALIBABA GROUP
+  # ============================================================================
+
+  BABA_ROOT:
+    legal_name: "Alibaba Group Holding Limited"
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "BABA"
+    note: >
+      Cayman Islands holding company. Operational control exercised from
+      the PRC. Chinese Communist Party has board observer rights.
+      CN_NSL applies regardless of Cayman/US subsidiary structures.
+
+  ALICLOUD_INT:
+    legal_name: "Alibaba Cloud International"
+    country_of_incorporation: "SG"
+    parent: BABA_ROOT
+    tier: 1
+    asn_list: [45102, 135188]
+    maxmind_patterns:
+      - "ALIBABA"
+      - "ALICLOUD"
+      - "ALIYUN"
+      - "ALIBABA-US"
+      - "ALIBABA (US) TECHNOLOGY"
+
+  ALICLOUD_DE:
+    legal_name: "Alibaba Cloud (Germany) GmbH"
+    country_of_incorporation: "DE"
+    parent: BABA_ROOT
+    tier: 1
+    note: "DE-GmbH — UBO Alibaba Group → CN_NSL applies"
+    maxmind_patterns:
+      - "ALICLOUD-DE"
+      - "ALIBABA CLOUD GERMANY"
+
+  LAZADA:
+    legal_name: "Lazada Group"
+    country_of_incorporation: "SG"
+    parent: BABA_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "LAZADA"
+
+  ANT_GROUP:
+    legal_name: "Ant Group Co., Ltd."
+    country_of_incorporation: "CN"
+    parent: BABA_ROOT
+    tier: 1
+    note: "Alipay operator — CN_NSL applies"
+    maxmind_patterns:
+      - "ANT GROUP"
+      - "ALIPAY"
+
+  # ============================================================================
+  # TENCENT
+  # ============================================================================
+
+  TENCENT_ROOT:
+    legal_name: "Tencent Holdings Limited"
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "0700.HK"
+    note: >
+      Cayman Islands holding company. Operational control exercised from
+      Shenzhen, PRC. CN_NSL applies to all subsidiaries globally.
+    asn_list: [45090, 132203, 132591]
+    maxmind_patterns:
+      - "TENCENT"
+      - "TENCENTCLOUD"
+
+  WECHAT:
+    legal_name: "Weixin / WeChat (Tencent)"
+    country_of_incorporation: "CN"
+    parent: TENCENT_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "WECHAT"
+      - "WEIXIN"
+      - "TENCENT-WECHAT"
+
+  RIOT_GAMES:
+    legal_name: "Riot Games, Inc."
+    country_of_incorporation: "US"
+    parent: TENCENT_ROOT
+    tier: 1
+    acquired: "2015-12"
+    maxmind_patterns:
+      - "RIOT-GAMES"
+      - "RIOTGAMES"
+    note: "US incorporation does not override CN_NSL from Tencent UBO"
+
+  SUPERCELL:
+    legal_name: "Supercell Oy"
+    country_of_incorporation: "FI"
+    parent: TENCENT_ROOT
+    tier: 1
+    acquired: "2016-06"
+    maxmind_patterns:
+      - "SUPERCELL"
+    note: "FI incorporation does not override CN_NSL from Tencent UBO"
+
+  EPIC_GAMES_TENCENT:
+    legal_name: "Epic Games, Inc. (partial Tencent stake)"
+    country_of_incorporation: "US"
+    parent: TENCENT_ROOT
+    tier: 1
+    note: >
+      Tencent holds ~40% non-controlling stake. Tagging is advisory only.
+      CN_NSL applicability disputed — flag for legal review.
+    maxmind_patterns:
+      - "EPICGAMES"
+      - "EPIC GAMES"
+
+  # ============================================================================
+  # HUAWEI
+  # ============================================================================
+
+  HUAWEI_ROOT:
+    legal_name: "Huawei Technologies Co., Ltd."
+    country_of_incorporation: "CN"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: "State-linked vendor. Multiple national security designations (US, UK, EU)."
+    asn_list: [136907, 55990]
+    maxmind_patterns:
+      - "HUAWEI"
+      - "HUAWEI-CLOUD"
+      - "HUAWEICLOUD"
+
+  # ============================================================================
+  # BYTEDANCE / TIKTOK
+  # ============================================================================
+
+  BYTEDANCE_ROOT:
+    legal_name: "ByteDance Ltd."
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: >
+      Cayman holding. Chinese entities ByteDance Information Technologies
+      and Beijing ByteDance retain operational control and data access.
+    asn_list: [396986, 138699]
+    maxmind_patterns:
+      - "BYTEDANCE"
+      - "TIKTOK"
+      - "BYTE DANCE"
+
+  TIKTOK_UK:
+    legal_name: "TikTok Information Technologies UK Limited"
+    country_of_incorporation: "GB"
+    parent: BYTEDANCE_ROOT
+    tier: 1
+    note: "UK entity — CN_NSL via UBO; review UK_IPA applicability"
+    maxmind_patterns:
+      - "TIKTOK UK"
+      - "TIKTOK-UK"
+
+  # ============================================================================
+  # BAIDU
+  # ============================================================================
+
+  BAIDU_ROOT:
+    legal_name: "Baidu, Inc."
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "BIDU"
+    note: "Cayman holding — operational control from Beijing, PRC."
+    asn_list: [55967, 38365]
+    maxmind_patterns:
+      - "BAIDU"
+      - "BAIDUCLOUD"
+
+  # ============================================================================
+  # CHINA TELECOM
+  # ============================================================================
+
+  CHINATELECOM_ROOT:
+    legal_name: "China Telecom Corporation Limited"
+    country_of_incorporation: "CN"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: "State-owned enterprise (SOE) — Ministry of Industry and IT."
+    asn_list: [4134, 4809, 23724]
+    maxmind_patterns:
+      - "CHINANET"
+      - "CHINANET-BACKBONE"
+      - "CHINA-TELECOM"
+      - "CHINATELECOM"
+      - "ChinaTelecom"
+
+  CHINATELECOM_EUROPE:
+    legal_name: "China Telecom (Europe) Limited"
+    country_of_incorporation: "GB"
+    parent: CHINATELECOM_ROOT
+    tier: 1
+    note: >
+      EU/UK operations. Multiple EU member states have revoked licenses.
+      Check current operational status before processing.
+    maxmind_patterns:
+      - "CHINA TELECOM EUROPE"
+      - "CTE"
+
+  # ============================================================================
+  # CHINA UNICOM
+  # ============================================================================
+
+  CHINAUNICOM_ROOT:
+    legal_name: "China United Network Communications Group Co., Ltd."
+    country_of_incorporation: "CN"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: "State-owned enterprise (SOE)."
+    asn_list: [4837, 9929, 10099]
+    maxmind_patterns:
+      - "CHINAUNICOM"
+      - "CHINA-UNICOM"
+      - "UNINET"
+      - "CNCGROUP"
+
+  # ============================================================================
+  # CHINA MOBILE
+  # ============================================================================
+
+  CHINAMOBILE_ROOT:
+    legal_name: "China Mobile Limited"
+    country_of_incorporation: "HK"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: "State-owned enterprise (SOE) — operational control from Beijing."
+    asn_list: [9808, 56040, 24400, 134810]
+    maxmind_patterns:
+      - "CHINAMOBILE"
+      - "CHINA-MOBILE"
+      - "CMNET"
+      - "CHINA MOBILE"
+
+  # ============================================================================
+  # XIAOMI
+  # ============================================================================
+
+  XIAOMI_ROOT:
+    legal_name: "Xiaomi Corporation"
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "1810.HK"
+    note: >
+      Cayman holding. Operational control from Beijing, PRC.
+      Previously on US DoD "Chinese Communist Military Companies" list
+      (delisted after 2021 litigation). Mobile devices, IoT ecosystem,
+      cloud services — broad telemetry surface.
+    maxmind_patterns:
+      - "XIAOMI"
+      - "XIAOMI-INC"
+      - "XIAOMI-NET"
+      - "MI-CLOUD"
+
+  # ============================================================================
+  # ZTE
+  # ============================================================================
+
+  ZTE_ROOT:
+    legal_name: "ZTE Corporation"
+    country_of_incorporation: "CN"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "000063.SZ"
+    note: >
+      State-linked telecom equipment vendor. Partially state-owned (via
+      Shenzhen Zhongxingxin, whose ultimate owners include state entities).
+      Subject to US export controls and BSI 5G scrutiny.
+    asn_list: [9394]
+    maxmind_patterns:
+      - "ZTE"
+      - "ZTE-CORP"
+      - "ZTE CORPORATION"
+
+  # ============================================================================
+  # JD.COM
+  # ============================================================================
+
+  JD_COM_ROOT:
+    legal_name: "JD.com, Inc."
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "JD"
+    note: >
+      Cayman holding, ADR listed on NASDAQ. Operational control from
+      Beijing, PRC. Includes JD Cloud (jdcloud.com).
+    maxmind_patterns:
+      - "JDCOM"
+      - "JD-COM"
+      - "JDCLOUD"
+      - "JD CLOUD"
+
+  # ============================================================================
+  # NETEASE
+  # ============================================================================
+
+  NETEASE_ROOT:
+    legal_name: "NetEase, Inc."
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "NTES"
+    note: "Cayman holding. Operational control from Hangzhou, PRC."
+    maxmind_patterns:
+      - "NETEASE"
+      - "NETEASE-INC"
+      - "163-COM"
+      - "YOUDAO"
+
+  # ============================================================================
+  # MEITUAN
+  # ============================================================================
+
+  MEITUAN_ROOT:
+    legal_name: "Meituan"
+    country_of_incorporation: "KY"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "3690.HK"
+    note: "Cayman holding. Operational control from Beijing, PRC."
+    maxmind_patterns:
+      - "MEITUAN"
+      - "MEITUAN-INC"
+
+  # ============================================================================
+  # PDD HOLDINGS (Pinduoduo / Temu)
+  # ============================================================================
+
+  PDD_HOLDINGS_ROOT:
+    legal_name: "PDD Holdings Inc."
+    country_of_incorporation: "IE"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "PDD"
+    note: >
+      Re-incorporated from Cayman to Ireland in 2023; HQ relocated from
+      Shanghai to Dublin. Despite Irish incorporation, operational
+      control remains in the PRC — Pinduoduo domestic platform and Temu
+      international platform both operated from Chinese technology teams.
+      CN_NSL applied per operational control policy.
+    maxmind_patterns:
+      - "PDD-HOLDINGS"
+      - "PINDUODUO"
+      - "TEMU"
+
+  # ============================================================================
+  # LENOVO
+  # ============================================================================
+
+  LENOVO_ROOT:
+    legal_name: "Lenovo Group Limited"
+    country_of_incorporation: "HK"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    stock_ticker: "0992.HK"
+    note: >
+      HK-incorporated, but largest shareholder is Legend Holdings (PRC)
+      which is partly state-backed via Chinese Academy of Sciences.
+      Operational HQ split Beijing / Morrisville NC, but PRC operational
+      control dominates. CN_NSL applied per Cayman/HK holding rule.
+    asn_list: [132770]
+    maxmind_patterns:
+      - "LENOVO"
+      - "LENOVO-GROUP"
+      - "LENOVO-CN"
+
+  MOTOROLA_MOBILITY:
+    legal_name: "Motorola Mobility LLC"
+    country_of_incorporation: "US"
+    parent: LENOVO_ROOT
+    tier: 1
+    acquired: "2014-10"
+    note: "US incorporation does not override CN_NSL from Lenovo UBO"
+    maxmind_patterns:
+      - "MOTOROLA-MOBILITY"
+      - "MOTOROLAMOBILITY"
+
+  # ============================================================================
+  # BT GROUP
+  # ============================================================================
+
+  BT_ROOT:
+    legal_name: "BT Group plc"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    stock_ticker: "BT.A"
+    asn_list: [2856, 5400]
+    maxmind_patterns:
+      - "BT-UK-AS"
+      - "BTNET"
+      - "BRITISH-TELECOM"
+      - "BT GROUP"
+
+  EE_LTD:
+    legal_name: "EE Limited"
+    country_of_incorporation: "GB"
+    parent: BT_ROOT
+    tier: 1
+    acquired: "2016-01"
+    asn_list: [12576]
+    maxmind_patterns:
+      - "EE LIMITED"
+      - "EVERYTHING-EVERYWHERE"
+      - "EE-"
+
+  OPENREACH:
+    legal_name: "Openreach Limited"
+    country_of_incorporation: "GB"
+    parent: BT_ROOT
+    tier: 1
+    maxmind_patterns:
+      - "OPENREACH"
+
+  # ============================================================================
+  # VIRGIN MEDIA O2 (50/50 JV — Liberty Global US + Telefónica ES)
+  # ============================================================================
+
+  VIRGINMEDIA_ROOT:
+    legal_name: "Virgin Media O2"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    note: >
+      50/50 joint venture between Liberty Global (see LIBERTY_GLOBAL_ROOT)
+      and Telefónica S.A. (Spain). UK_IPA applies as UK CSP. Per ownership
+      policy, JVs with exactly 50/50 split are NOT tagged with parent
+      jurisdictions — but Liberty Global exposure should be assessed
+      case-by-case for sensitive workloads (US nexus of one JV partner).
+    asn_list: [5089, 13037]
+    maxmind_patterns:
+      - "VIRGINMEDIA"
+      - "VIRGIN MEDIA"
+      - "VIRGIN-MEDIA"
+
+  # ============================================================================
+  # SKY UK (now properly structured under Comcast UBO)
+  # ============================================================================
+
+  SKY_UK:
+    legal_name: "Sky Limited"
+    country_of_incorporation: "GB"
+    parent: COMCAST_ROOT
+    tier: 1
+    jurisdiction_tags: [UK_IPA]
+    acquired: "2018-10"
+    note: >
+      Wholly owned by Comcast Corporation (US) since 2018.
+      UK_IPA applied as independent child-jurisdiction tag (Sky is a
+      UK-licensed CSP). US_CLOUD_ACT + US_FISA_702 cascade automatically
+      from COMCAST_ROOT UBO via graph traversal.
+    asn_list: [5607]
+    maxmind_patterns:
+      - "SKY-NETWORK"
+      - "SKYUK"
+      - "SKY UK"
+      - "SKY-"
+
+  # ============================================================================
+  # VODAFONE GROUP (UK — restructured with VodafoneThree JV)
+  # ============================================================================
+
+  VODAFONEGROUP_ROOT:
+    legal_name: "Vodafone Group plc"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    stock_ticker: "VOD"
+    note: >
+      UK-incorporated, listed on LSE. Global telecom group with operations
+      across Europe and Africa. UK_IPA cascades to all subsidiaries.
+    asn_list: [1273]
+    maxmind_patterns:
+      - "VODAFONE"
+      - "VODAFONE-GROUP"
+      - "VODAFONE PLC"
+
+  VODAFONETHREE_UK:
+    legal_name: "VodafoneThree Holdings Limited"
+    country_of_incorporation: "GB"
+    parent: VODAFONEGROUP_ROOT
+    tier: 1
+    acquired: "2025-05"
+    note: >
+      Joint venture formed 2025-05-31 via merger of Vodafone UK Limited
+      and Three UK Limited. Ownership: 51% Vodafone Group plc (UK),
+      49% CK Hutchison Group Telecom Holdings (HK-controlled). Per
+      ownership policy (≥50% majority → tag majority jurisdiction),
+      UK_IPA cascades from VODAFONEGROUP_ROOT as sole jurisdiction.
+      CK Hutchison minority exposure noted for awareness; no CN_NSL
+      applied (CKH is HK-incorporated, not PRC operational control).
+      Vodafone holds a Put/Call option to acquire CKH stake after 3 years.
+    asn_list: [25135, 13285]
+    maxmind_patterns:
+      - "VODAFONE-UK"
+      - "VODAFONE FIXED"
+      - "VODAFONE LIMITED"
+      - "VODAFONETHREE"
+      - "VODAFONE THREE"
+      - "THREE-UK"
+      - "THREE UK"
+      - "HUTCHISON3"
+      - "H3G"
+
+  # ============================================================================
+  # TALKTALK
+  # ============================================================================
+
+  TALKTALK_ROOT:
+    legal_name: "TalkTalk Telecom Group plc"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    asn_list: [13285]
+    maxmind_patterns:
+      - "TALKTALK"
+      - "TALK TALK"
+
+  # ============================================================================
+  # O2 UK (TELEFONICA) — JV partner in Virgin Media O2
+  # ============================================================================
+
+  O2_UK:
+    legal_name: "Telefónica UK Limited"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    note: >
+      UK operating entity of Telefónica S.A. (Spain). UK_IPA applies.
+      Telefónica group is Spanish — no CN/US cascading tags.
+      Telefónica S.A. itself not modelled as tier-0 parent (ES-domiciled,
+      untagged per scope policy).
+    asn_list: [8330]
+    maxmind_patterns:
+      - "O2-UK"
+      - "O2 UK"
+      - "TELEFONICA-UK"
+
+  # ============================================================================
+  # DARKTRACE (UK cybersecurity — PE-owned since 2024)
+  # ============================================================================
+
+  DARKTRACE_ROOT:
+    legal_name: "Darktrace Limited"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    note: >
+      Taken private by Thoma Bravo (US PE) in October 2024 for $5.3B.
+      De-listed from LSE. Per ownership policy, tagging follows operational
+      entity incorporation (UK, Cambridge) — remains UK_IPA only.
+      AI cybersecurity platform (Darktrace Enterprise Immune System, Cyber AI).
+    maxmind_patterns:
+      - "DARKTRACE"
+      - "DARKTRACE-LTD"
+
+  # ============================================================================
+  # SOPHOS (UK cybersecurity — PE-owned since 2020)
+  # ============================================================================
+
+  SOPHOS_ROOT:
+    legal_name: "Sophos Group Limited"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    note: >
+      Taken private by Thoma Bravo (US PE) in March 2020 for $3.9B.
+      UK-incorporated, HQ Abingdon, Oxfordshire. Per ownership policy,
+      tagging follows UK operational incorporation — UK_IPA only.
+      Endpoint protection, MDR, XDR, firewall appliances.
+    asn_list: [30962]
+    maxmind_patterns:
+      - "SOPHOS"
+      - "SOPHOS-PLC"
+      - "SOPHOS-LTD"
+
+  SECUREWORKS:
+    legal_name: "Secureworks, Inc."
+    country_of_incorporation: "US"
+    parent: SOPHOS_ROOT
+    tier: 1
+    acquired: "2025-02"
+    note: >
+      Acquired by Sophos from Dell (2025-02-03, $859M). Previously majority
+      owned by Dell. US incorporation — carries US_CLOUD_ACT as additional
+      tag independent of Sophos UK_IPA cascade.
+    jurisdiction_tags: [US_CLOUD_ACT]
+    asn_list: [19345]
+    maxmind_patterns:
+      - "SECUREWORKS"
+      - "SECUREWORKS-INC"
+
+  # ============================================================================
+  # MIMECAST (UK email security — PE-owned since 2022)
+  # ============================================================================
+
+  MIMECAST_ROOT:
+    legal_name: "Mimecast Limited"
+    country_of_incorporation: "GB"
+    jurisdiction_tags: [UK_IPA]
+    tier: 0
+    note: >
+      Taken private by Permira (UK/LUX PE) in May 2022 for $5.8B.
+      UK-incorporated. Email security and archiving. Per ownership
+      policy, tagging follows UK operational incorporation.
+    maxmind_patterns:
+      - "MIMECAST"
+      - "MIMECAST-LTD"
+      - "MIMECAST-SA"
+
+  MIMECAST_NA:
+    legal_name: "Mimecast North America, Inc."
+    country_of_incorporation: "US"
+    parent: MIMECAST_ROOT
+    tier: 1
+    note: >
+      US subsidiary. Carries US_CLOUD_ACT as exception tag (child in
+      different jurisdiction than UK parent). US_FISA_702 also applies
+      as email security qualifies as ECSP.
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    maxmind_patterns:
+      - "MIMECAST-NA"
+      - "MIMECAST NORTH AMERICA"
+      - "MIMECAST-US"
+
+  # ============================================================================
+  # ============================================================================
+  # NETWORKING HARDWARE & ENTERPRISE INFRASTRUCTURE
+  # ============================================================================
+  # ============================================================================
+
+  # ============================================================================
+  # CISCO SYSTEMS
+  # ============================================================================
+
+  CISCO_ROOT:
+    legal_name: "Cisco Systems, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, US_FISA_702]
+    tier: 0
+    stock_ticker: "CSCO"
+    note: >
+      Dominant enterprise networking vendor. US_FISA_702 applies via WebEx,
+      Webex Messaging, and Cisco Unified Communications — qualifying ECSP
+      services. Core networking appliances (Catalyst, Nexus, ASR) are
+      primarily customer-owned equipment, but cloud-managed services
+      (Meraki Cloud, DNA Center Cloud) create cloud-side data exposure.
+    asn_list: [109, 7018]
+    maxmind_patterns:
+      - "CISCO"
+      - "CISCO SYSTEMS"
+      - "CISCOSYSTEMS"
+      - "CISCO-SYSTEMS"
+
+  MERAKI:
+    legal_name: "Cisco Meraki LLC"
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2012-12"
+    note: "Cloud-managed networking — telemetry and config stored in Meraki cloud"
+    maxmind_patterns:
+      - "MERAKI"
+      - "MERAKI-INC"
+      - "CISCO-MERAKI"
+
+  DUO_SECURITY:
+    legal_name: "Duo Security LLC"
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2018-09"
+    note: "MFA and Zero Trust Access — authentication events logged in Cisco cloud"
+    maxmind_patterns:
+      - "DUO-SECURITY"
+      - "DUOSECURITY"
+      - "DUO SECURITY"
+
+  SPLUNK:
+    legal_name: "Splunk Inc."
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2024-03"
+    note: >
+      Cisco completed $28B acquisition 2024-03-18 — largest in Cisco history.
+      Splunk Cloud processes customer log/telemetry data — US hosting
+      implies US_CLOUD_ACT exposure on customer data.
+    asn_list: [54781]
+    maxmind_patterns:
+      - "SPLUNK"
+      - "SPLUNK-INC"
+      - "SPLUNK-CLOUD"
+
+  WEBEX:
+    legal_name: "Cisco Webex LLC"
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    note: "Video conferencing and messaging — primary ECSP service within Cisco"
+    maxmind_patterns:
+      - "WEBEX"
+      - "CISCO-WEBEX"
+
+  CISCO_UMBRELLA:
+    legal_name: "Cisco Umbrella (OpenDNS)"
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2015-08"
+    note: "Formerly OpenDNS — DNS/DNS-over-HTTPS security; DNS queries routed via Cisco cloud"
+    maxmind_patterns:
+      - "OPENDNS"
+      - "UMBRELLA"
+      - "CISCO-UMBRELLA"
+
+  THOUSANDEYES:
+    legal_name: "ThousandEyes, Inc."
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2020-08"
+    note: "Network observability — agents deployed globally report to US cloud"
+    maxmind_patterns:
+      - "THOUSANDEYES"
+      - "THOUSAND-EYES"
+
+  APPDYNAMICS:
+    legal_name: "AppDynamics LLC"
+    country_of_incorporation: "US"
+    parent: CISCO_ROOT
+    tier: 1
+    acquired: "2017-03"
+    maxmind_patterns:
+      - "APPDYNAMICS"
+      - "APP-DYNAMICS"
+
+  # ============================================================================
+  # HPE (Hewlett Packard Enterprise) — incl. Juniper since 2025-07
+  # ============================================================================
+
+  HPE_ROOT:
+    legal_name: "Hewlett Packard Enterprise Company"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "HPE"
+    note: >
+      Spun off from HP Inc. in 2015. Major server, storage, and networking
+      vendor. Doubled networking business with Juniper acquisition (2025-07).
+    asn_list: [71]
+    maxmind_patterns:
+      - "HPE"
+      - "HEWLETT-PACKARD-ENTERPRISE"
+      - "HPE-NET"
+      - "HEWLETT PACKARD ENTERPRISE"
+
+  ARUBA_NETWORKS:
+    legal_name: "Aruba Networks LLC"
+    country_of_incorporation: "US"
+    parent: HPE_ROOT
+    tier: 1
+    acquired: "2015-05"
+    note: "Wireless and campus networking — rebranded HPE Aruba Networking"
+    maxmind_patterns:
+      - "ARUBA-NETWORKS"
+      - "ARUBANETWORKS"
+      - "ARUBA NETWORKS"
+
+  JUNIPER_NETWORKS:
+    legal_name: "Juniper Networks, Inc."
+    country_of_incorporation: "US"
+    parent: HPE_ROOT
+    tier: 1
+    acquired: "2025-07"
+    note: >
+      HPE completed Juniper acquisition 2025-07-02 ($14B) after DOJ
+      settlement. Juniper delisted from NYSE (was JNPR). Rebranded
+      HPE Juniper Networking. Data center, service provider routing,
+      AI-native networking portfolio.
+    asn_list: [2497]
+    maxmind_patterns:
+      - "JUNIPER"
+      - "JUNIPER-NETWORKS"
+      - "JNPR"
+
+  MIST_SYSTEMS:
+    legal_name: "Mist Systems, Inc."
+    country_of_incorporation: "US"
+    parent: JUNIPER_NETWORKS
+    tier: 2
+    acquired: "2019-04"
+    note: "AI-driven WiFi / Mist AIOps — acquired by Juniper pre-HPE deal"
+    maxmind_patterns:
+      - "MIST-SYSTEMS"
+      - "MISTSYS"
+
+  ZERTO:
+    legal_name: "Zerto Ltd."
+    country_of_incorporation: "IL"
+    parent: HPE_ROOT
+    tier: 1
+    acquired: "2021-09"
+    jurisdiction_tags: [IL_NSL]
+    note: >
+      IL-incorporated (Herzliya) with significant IL R&D. US_CLOUD_ACT
+      cascades from HPE_ROOT; IL_NSL applied as exception tag for IL
+      operational entity. Disaster recovery and data protection software.
+    maxmind_patterns:
+      - "ZERTO"
+      - "ZERTO-LTD"
+
+  # ============================================================================
+  # DELL TECHNOLOGIES
+  # ============================================================================
+
+  DELL_ROOT:
+    legal_name: "Dell Technologies Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "DELL"
+    note: >
+      US-incorporated, publicly listed post-2018 re-IPO. Includes legacy
+      EMC storage, PowerEdge servers, PowerSwitch networking. Note:
+      Secureworks divested to Sophos (2025-02); VMware divested to
+      Broadcom (2021); Pivotal absorbed into VMware pre-Broadcom deal;
+      RSA Security sold to Symphony Technology Group (2020).
+    asn_list: [3614, 22266]
+    maxmind_patterns:
+      - "DELL"
+      - "DELL-TECHNOLOGIES"
+      - "DELL-INC"
+      - "DELLCORP"
+
+  # ============================================================================
+  # BROADCOM (incl. VMware since 2023-11, Symantec Enterprise, CA, Brocade)
+  # ============================================================================
+
+  BROADCOM_ROOT:
+    legal_name: "Broadcom Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "AVGO"
+    note: >
+      Re-domiciled from Singapore to Delaware (US) in 2018. Semiconductor
+      and infrastructure software. Acquired VMware (2023-11) for $69B,
+      Symantec Enterprise (2019), CA Technologies (2018), Brocade (2017).
+    asn_list: [14593]
+    maxmind_patterns:
+      - "BROADCOM"
+      - "BROADCOM-INC"
+      - "BROADCOMCORP"
+
+  VMWARE:
+    legal_name: "VMware LLC"
+    country_of_incorporation: "US"
+    parent: BROADCOM_ROOT
+    tier: 1
+    acquired: "2023-11"
+    note: >
+      Broadcom completed VMware acquisition 2023-11-22 ($69B). Private
+      since. Virtualization, software-defined networking (NSX),
+      end-user computing (Horizon), VMware Cloud Foundation.
+    asn_list: [6465]
+    maxmind_patterns:
+      - "VMWARE"
+      - "VMWARE-INC"
+      - "VMWARE-AS"
+      - "VMW-"
+
+  SYMANTEC_ENTERPRISE:
+    legal_name: "Symantec Enterprise Security (Broadcom)"
+    country_of_incorporation: "US"
+    parent: BROADCOM_ROOT
+    tier: 1
+    acquired: "2019-11"
+    note: >
+      Enterprise security business of former Symantec (consumer business
+      spun off as NortonLifeLock, now Gen Digital — separate entity).
+      Includes Web Gateway (Blue Coat), DLP, Endpoint Security.
+    maxmind_patterns:
+      - "SYMANTEC"
+      - "SYMANTEC-AS"
+      - "BLUECOAT"
+      - "BLUE-COAT"
+
+  CA_TECHNOLOGIES:
+    legal_name: "CA, Inc. (Broadcom Software)"
+    country_of_incorporation: "US"
+    parent: BROADCOM_ROOT
+    tier: 1
+    acquired: "2018-11"
+    note: "Enterprise software — mainframe, DevOps, API management"
+    maxmind_patterns:
+      - "CA-TECHNOLOGIES"
+      - "CATECHNOLOGIES"
+      - "CA INC"
+
+  BROCADE:
+    legal_name: "Brocade Communications Systems LLC"
+    country_of_incorporation: "US"
+    parent: BROADCOM_ROOT
+    tier: 1
+    acquired: "2017-11"
+    note: "Fibre Channel SAN switching, predecessor to Broadcom storage networking"
+    maxmind_patterns:
+      - "BROCADE"
+      - "BROCADE-COMM"
+
+  # ============================================================================
+  # ARISTA NETWORKS
+  # ============================================================================
+
+  ARISTA_ROOT:
+    legal_name: "Arista Networks, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "ANET"
+    note: "Data center and cloud networking — primary competitor to Cisco Nexus"
+    maxmind_patterns:
+      - "ARISTA"
+      - "ARISTA-NETWORKS"
+      - "ARISTANETWORKS"
+
+  AWAKE_SECURITY:
+    legal_name: "Awake Security, Inc. (Arista NDR)"
+    country_of_incorporation: "US"
+    parent: ARISTA_ROOT
+    tier: 1
+    acquired: "2020-10"
+    note: "Network Detection and Response (NDR) platform, now Arista NDR"
+    maxmind_patterns:
+      - "AWAKE-SECURITY"
+      - "AWAKESECURITY"
+
+  # ============================================================================
+  # EXTREME NETWORKS
+  # ============================================================================
+
+  EXTREME_ROOT:
+    legal_name: "Extreme Networks, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "EXTR"
+    note: "Campus, data center, and wireless networking"
+    maxmind_patterns:
+      - "EXTREME"
+      - "EXTREME-NETWORKS"
+      - "EXTREMENETWORKS"
+
+  # ============================================================================
+  # F5 NETWORKS
+  # ============================================================================
+
+  F5_ROOT:
+    legal_name: "F5, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "FFIV"
+    note: "Application delivery and security — BIG-IP, NGINX"
+    maxmind_patterns:
+      - "F5-NETWORKS"
+      - "F5NETWORKS"
+      - "F5 NETWORKS"
+      - "F5-INC"
+
+  NGINX:
+    legal_name: "NGINX, Inc."
+    country_of_incorporation: "US"
+    parent: F5_ROOT
+    tier: 1
+    acquired: "2019-05"
+    note: >
+      US-incorporated. Original authors Russian (Igor Sysoev). Open-source
+      project governance currently at F5 US — no direct RU jurisdiction
+      exposure at corporate level.
+    maxmind_patterns:
+      - "NGINX"
+      - "NGINX-INC"
+
+  # ============================================================================
+  # NVIDIA
+  # ============================================================================
+
+  NVIDIA_ROOT:
+    legal_name: "NVIDIA Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "NVDA"
+    note: "GPU, AI accelerators, networking silicon (post-Mellanox)"
+    asn_list: [14956]
+    maxmind_patterns:
+      - "NVIDIA"
+      - "NVIDIA-CORP"
+
+  MELLANOX:
+    legal_name: "Mellanox Technologies Ltd."
+    country_of_incorporation: "IL"
+    parent: NVIDIA_ROOT
+    tier: 1
+    acquired: "2020-04"
+    jurisdiction_tags: [IL_NSL]
+    note: >
+      IL-incorporated (Yokneam), major IL R&D center. Infiniband and
+      Ethernet adapters, switches. NVIDIA Networking portfolio.
+      US_CLOUD_ACT cascades from NVIDIA_ROOT; IL_NSL applied as
+      exception tag for IL operational entity.
+    maxmind_patterns:
+      - "MELLANOX"
+      - "MELLANOX-TECHNOLOGIES"
+      - "MELLANOXTECH"
+
+  CUMULUS_NETWORKS:
+    legal_name: "Cumulus Networks, Inc."
+    country_of_incorporation: "US"
+    parent: NVIDIA_ROOT
+    tier: 1
+    acquired: "2020-06"
+    note: "Acquired by NVIDIA alongside Mellanox; Cumulus Linux NOS"
+    maxmind_patterns:
+      - "CUMULUS-NETWORKS"
+      - "CUMULUSNETWORKS"
+
+  # ============================================================================
+  # INTEL
+  # ============================================================================
+
+  INTEL_ROOT:
+    legal_name: "Intel Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "INTC"
+    note: >
+      Semiconductor manufacturer. Note: Altera divested to Silver Lake
+      (2025) and is now independent. Mobileye IPO'd (2022-10) but Intel
+      retains majority ownership (~88%).
+    asn_list: [4983, 46104]
+    maxmind_patterns:
+      - "INTEL"
+      - "INTEL-CORP"
+      - "INTEL-COMM"
+
+  MOBILEYE:
+    legal_name: "Mobileye Global Inc."
+    country_of_incorporation: "US"
+    parent: INTEL_ROOT
+    tier: 1
+    acquired: "2017-08"
+    jurisdiction_tags: [IL_NSL]
+    stock_ticker: "MBLY"
+    note: >
+      IPO'd October 2022, but Intel retains ~88% ownership (majority
+      controlling stake) → UBO remains INTEL_ROOT. Major IL R&D
+      operations (Jerusalem HQ for operations). IL_NSL exception tag
+      applied alongside cascading US_CLOUD_ACT.
+    maxmind_patterns:
+      - "MOBILEYE"
+      - "MOBILEYE-INC"
+
+  # ============================================================================
+  # AMD
+  # ============================================================================
+
+  AMD_ROOT:
+    legal_name: "Advanced Micro Devices, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "AMD"
+    maxmind_patterns:
+      - "AMD"
+      - "ADVANCED-MICRO-DEVICES"
+      - "AMD-INC"
+
+  XILINX:
+    legal_name: "Xilinx, Inc."
+    country_of_incorporation: "US"
+    parent: AMD_ROOT
+    tier: 1
+    acquired: "2022-02"
+    note: "FPGA and adaptive computing — AMD completed $35B acquisition 2022-02"
+    maxmind_patterns:
+      - "XILINX"
+      - "XILINX-INC"
+
+  PENSANDO:
+    legal_name: "Pensando Systems, Inc."
+    country_of_incorporation: "US"
+    parent: AMD_ROOT
+    tier: 1
+    acquired: "2022-05"
+    note: "DPU / smart switch platform — AMD Pensando"
+    maxmind_patterns:
+      - "PENSANDO"
+      - "PENSANDO-SYSTEMS"
+
+  # ============================================================================
+  # QUALCOMM
+  # ============================================================================
+
+  QUALCOMM_ROOT:
+    legal_name: "Qualcomm Incorporated"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "QCOM"
+    note: "Mobile chipsets, modems, Wi-Fi silicon, automotive platforms"
+    asn_list: [55035]
+    maxmind_patterns:
+      - "QUALCOMM"
+      - "QUALCOMM-INC"
+
+  # ============================================================================
+  # MARVELL TECHNOLOGY
+  # ============================================================================
+
+  MARVELL_ROOT:
+    legal_name: "Marvell Technology, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "MRVL"
+    note: >
+      Re-domiciled from Bermuda to Delaware (US) in 2021. Data
+      infrastructure semiconductors — networking silicon, custom ASICs,
+      storage controllers.
+    maxmind_patterns:
+      - "MARVELL"
+      - "MARVELL-TECH"
+
+  # ============================================================================
+  # H3C (CN-controlled networking vendor)
+  # ============================================================================
+
+  H3C_ROOT:
+    legal_name: "New H3C Technologies Co., Ltd."
+    country_of_incorporation: "CN"
+    jurisdiction_tags: [CN_NSL]
+    tier: 0
+    note: >
+      Chinese networking hardware vendor, successor to 3Com/H3C China
+      operations. Controlled by Unisplendour Corporation Ltd. (PRC),
+      itself majority-owned by Tsinghua Holdings (state-backed via
+      Tsinghua University). HPE completed divestment of residual stake
+      in 2022-2023 — H3C now fully under PRC control.
+      Switches, routers, wireless, servers for CN and international markets.
+    maxmind_patterns:
+      - "H3C"
+      - "H3C-TECHNOLOGIES"
+      - "NEW-H3C"
+      - "HUAWEI-SYMANTEC"
+
+  # ============================================================================
+  # NETAPP
+  # ============================================================================
+
+  NETAPP_ROOT:
+    legal_name: "NetApp, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "NTAP"
+    note: "Enterprise storage and hybrid cloud data services"
+    maxmind_patterns:
+      - "NETAPP"
+      - "NETAPP-INC"
+
+  # ============================================================================
+  # PURE STORAGE
+  # ============================================================================
+
+  PURESTORAGE_ROOT:
+    legal_name: "Pure Storage, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "PSTG"
+    note: "All-flash enterprise storage, Pure1 cloud management"
+    maxmind_patterns:
+      - "PURE-STORAGE"
+      - "PURESTORAGE"
+
+  # ============================================================================
+  # SUPER MICRO COMPUTER
+  # ============================================================================
+
+  SUPERMICRO_ROOT:
+    legal_name: "Super Micro Computer, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT]
+    tier: 0
+    stock_ticker: "SMCI"
+    note: "Server hardware vendor with major presence in AI training clusters"
+    maxmind_patterns:
+      - "SUPERMICRO"
+      - "SUPER-MICRO"
+      - "SUPERMICRO-COMPUTER"
+
+  # ============================================================================
+  # ============================================================================
+  # RUSSIAN FEDERATION ENTITIES (RU_SORM)
+  # ============================================================================
+  # ============================================================================
+  # All entities below are subject to RU sanctions review by EU/US/UK
+  # since February 2022. Coordinate with Legal on sanctions screening.
+  # ============================================================================
+
+  KASPERSKY_ROOT:
+    legal_name: "AO Kaspersky Lab"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: >
+      Cybersecurity vendor HQ Moscow. Added to FCC "Covered List" (US, 2022).
+      US Commerce Department prohibition on Kaspersky product sales in
+      the US effective 2024-09. German BSI issued public warning against
+      Kaspersky products 2022-03-15 in context of Russian invasion.
+      Multiple EU member states removed from government procurement.
+      Operational use severely restricted.
+    asn_list: [200107]
+    maxmind_patterns:
+      - "KASPERSKY"
+      - "KASPERSKY-LAB"
+      - "AO-KASPERSKY-LAB"
+
+  KASPERSKY_UK:
+    legal_name: "Kaspersky Lab UK Limited"
+    country_of_incorporation: "GB"
+    parent: KASPERSKY_ROOT
+    tier: 1
+    note: "UK reseller/support entity — RU_SORM cascades from UBO"
+    maxmind_patterns:
+      - "KASPERSKY-UK"
+      - "KASPERSKY LAB UK"
+
+  KASPERSKY_DE:
+    legal_name: "Kaspersky Labs GmbH"
+    country_of_incorporation: "DE"
+    parent: KASPERSKY_ROOT
+    tier: 1
+    note: >
+      DACH GmbH — UBO still AO Kaspersky Lab (RU). RU_SORM applies.
+      Cross-reference BSI-Warnung 2022-03-15 for DE government / CRITIS usage.
+    maxmind_patterns:
+      - "KASPERSKY-DE"
+      - "KASPERSKY LABS"
+
+  YANDEX_ROOT:
+    legal_name: "Yandex LLC (Russian operations)"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: >
+      Russian Yandex operations separated from former Yandex NV in
+      July 2024 sale (~475B RUB / $5.2B) to a Russian consortium.
+      Former parent Yandex NV (Netherlands) was renamed "Nebius Group"
+      and retained non-Russian assets (Nebius AI Cloud — NOT modeled
+      here, NL-incorporated with no applicable tag). Russian Yandex
+      operates search, maps, taxi, market, cloud, mail, and multiple
+      ОРИ-registered services.
+    asn_list: [13238, 208722, 208722]
+    maxmind_patterns:
+      - "YANDEX"
+      - "YANDEX LLC"
+      - "YANDEX-NETWORK"
+      - "YANDEXCLOUD"
+      - "YANDEX-CLOUD"
+
+  ROSTELECOM_ROOT:
+    legal_name: "PJSC Rostelecom"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    stock_ticker: "RTKM.ME"
+    note: >
+      State-owned incumbent telecommunications operator. Owns Tele2
+      Russia. SORM-3 integration at network core. Subject to
+      EU/US/UK sanctions since 2022.
+    asn_list: [12389, 42610, 8359]
+    maxmind_patterns:
+      - "ROSTELECOM"
+      - "RTCOMM"
+      - "ROSTELECOM-AS"
+
+  TELE2_RU:
+    legal_name: "Tele2 Russia"
+    country_of_incorporation: "RU"
+    parent: ROSTELECOM_ROOT
+    tier: 1
+    acquired: "2019-04"
+    note: "Fully consolidated under Rostelecom since 2019-04 buyout"
+    maxmind_patterns:
+      - "TELE2-RU"
+      - "T2-RU"
+
+  MTS_ROOT:
+    legal_name: "PJSC Mobile TeleSystems (MTS)"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: >
+      Largest Russian mobile operator. Part of AFK Sistema group (RU).
+      Delisted from NYSE in 2022. Subject to various sanctions.
+    asn_list: [8359, 29497, 8345]
+    maxmind_patterns:
+      - "MTS-"
+      - "MTS PJSC"
+      - "MTS MGTS"
+      - "MOBILE-TELESYSTEMS"
+
+  MEGAFON_ROOT:
+    legal_name: "PJSC MegaFon"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: >
+      Russian mobile operator. Privately held by USM Holdings
+      (Alisher Usmanov — sanctioned EU/UK/US).
+    asn_list: [31133, 25159]
+    maxmind_patterns:
+      - "MEGAFON"
+      - "MEGAFON-AS"
+      - "PJSC MEGAFON"
+
+  VK_GROUP_ROOT:
+    legal_name: "VK Group JSC"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    stock_ticker: "VKCO.ME"
+    note: >
+      Renamed from Mail.ru Group in 2021. Delisted from LSE in 2022.
+      Operates VK social network, VK Play, Mail.ru email, VK Cloud,
+      Odnoklassniki, Delivery Club, etc. Majority control via
+      state-linked consortium (Gazprom-Media + SOGAZ).
+    asn_list: [47764, 25532]
+    maxmind_patterns:
+      - "VK-"
+      - "VKONTAKTE"
+      - "MAILRU"
+      - "MAIL-RU"
+      - "MAIL.RU"
+      - "VK GROUP"
+
+  BEELINE_RU_ROOT:
+    legal_name: "PJSC VimpelCom (Beeline Russia)"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: >
+      Divested by VEON (Netherlands) in 2023-10 to Russian management buyout.
+      Now under fully Russian ownership. Operates Beeline brand in Russia.
+    asn_list: [3216, 8402, 16345]
+    maxmind_patterns:
+      - "BEELINE"
+      - "VIMPELCOM"
+      - "VIMPEL-COMMUNICATIONS"
+
+  TTK_ROOT:
+    legal_name: "TransTelecom Company JSC"
+    country_of_incorporation: "RU"
+    jurisdiction_tags: [RU_SORM]
+    tier: 0
+    note: "Russian Railways subsidiary — backbone ISP"
+    asn_list: [20485, 21378]
+    maxmind_patterns:
+      - "TRANSTELECOM"
+      - "TRANSTELECOM-AS"
+      - "TTK"
+
+  # ============================================================================
+  # ============================================================================
+  # INDIAN ENTITIES (IN_DPDP)
+  # ============================================================================
+  # ============================================================================
+
+  RELIANCE_ROOT:
+    legal_name: "Reliance Industries Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "RELIANCE.NS"
+    note: >
+      Indian conglomerate — oil/petrochem/retail/digital. Parent of
+      Jio ecosystem. Largest company in India by market cap.
+    maxmind_patterns:
+      - "RELIANCE"
+      - "RELIANCE-INDUSTRIES"
+
+  JIO_PLATFORMS:
+    legal_name: "Jio Platforms Limited"
+    country_of_incorporation: "IN"
+    parent: RELIANCE_ROOT
+    tier: 1
+    note: >
+      Digital holding company for Reliance's digital services. Houses
+      Jio Infocomm, JioMart, JioCinema, JioSaavn, JioHealth, JioCloud.
+      External investors include KKR, Silver Lake, Google, Meta, PIF
+      (minority positions, Reliance retains controlling majority).
+    maxmind_patterns:
+      - "JIO-PLATFORMS"
+      - "JIOPLATFORMS"
+
+  JIO_INFOCOMM:
+    legal_name: "Reliance Jio Infocomm Limited"
+    country_of_incorporation: "IN"
+    parent: JIO_PLATFORMS
+    tier: 2
+    note: "India's largest mobile telecom operator by subscriber count"
+    asn_list: [55836, 64049]
+    maxmind_patterns:
+      - "RELIANCEJIO"
+      - "RELIANCE-JIO"
+      - "JIO"
+      - "RJIL"
+
+  BHARTI_AIRTEL_ROOT:
+    legal_name: "Bharti Airtel Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "BHARTIARTL.NS"
+    note: "Second-largest Indian mobile operator; also operations across Africa"
+    asn_list: [9498, 24560, 45609]
+    maxmind_patterns:
+      - "BHARTI"
+      - "BHARTI-AIRTEL"
+      - "AIRTEL"
+      - "BHARTIAIRTEL"
+
+  BSNL_ROOT:
+    legal_name: "Bharat Sanchar Nigam Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    note: "State-owned Indian telecom operator"
+    asn_list: [9829]
+    maxmind_patterns:
+      - "BSNL"
+      - "BHARAT-SANCHAR"
+      - "BSNL-INTERNET"
+
+  VI_INDIA_ROOT:
+    legal_name: "Vodafone Idea Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "IDEA.NS"
+    note: >
+      Formed 2018 from merger of Vodafone India and Idea Cellular.
+      Vodafone Group (UK) holds ~22%; Aditya Birla Group (IN) ~18%;
+      Indian Government acquired ~33% stake via debt-to-equity conversion
+      in 2023 — now largest single shareholder. Per majority ownership
+      policy, IN_DPDP applies. No UK_IPA cascade since Vodafone Group
+      is minority.
+    asn_list: [55410, 55644]
+    maxmind_patterns:
+      - "VI-INDIA"
+      - "VODAFONE-IDEA"
+      - "VODAFONEIDEA"
+      - "IDEACELLULAR"
+
+  TCS_ROOT:
+    legal_name: "Tata Consultancy Services Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "TCS.NS"
+    note: "Largest Indian IT services firm, Tata Group subsidiary"
+    maxmind_patterns:
+      - "TCS"
+      - "TATA-CONSULTANCY"
+      - "TATACONSULTANCY"
+
+  TATA_COMMUNICATIONS:
+    legal_name: "Tata Communications Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "TATACOMM.NS"
+    note: >
+      Separate listed entity from TCS (both Tata Group). Major
+      international wholesale carrier — formerly VSNL. Operates
+      Tier-1 backbone present in many European PoPs.
+    asn_list: [4755, 6453]
+    maxmind_patterns:
+      - "TATA-COMMUNICATIONS"
+      - "TATACOMMUNICATIONS"
+      - "VSNL"
+      - "TATA-INDIA"
+
+  INFOSYS_ROOT:
+    legal_name: "Infosys Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "INFY"
+    maxmind_patterns:
+      - "INFOSYS"
+      - "INFOSYS-LIMITED"
+
+  WIPRO_ROOT:
+    legal_name: "Wipro Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "WIT"
+    maxmind_patterns:
+      - "WIPRO"
+      - "WIPRO-LIMITED"
+
+  HCL_TECH_ROOT:
+    legal_name: "HCL Technologies Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "HCLTECH.NS"
+    maxmind_patterns:
+      - "HCL"
+      - "HCL-TECHNOLOGIES"
+      - "HCLTECH"
+
+  TECHMAHINDRA_ROOT:
+    legal_name: "Tech Mahindra Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "TECHM.NS"
+    note: "Part of Mahindra Group conglomerate"
+    maxmind_patterns:
+      - "TECH-MAHINDRA"
+      - "TECHMAHINDRA"
+
+  LTIMINDTREE_ROOT:
+    legal_name: "LTIMindtree Limited"
+    country_of_incorporation: "IN"
+    jurisdiction_tags: [IN_DPDP]
+    tier: 0
+    stock_ticker: "LTIM.NS"
+    note: "Merger of Larsen & Toubro Infotech and Mindtree (2022-11)"
+    maxmind_patterns:
+      - "LTIMINDTREE"
+      - "LTIMIND"
+      - "LARSEN-TOUBRO-INFOTECH"
+      - "MINDTREE"
+
+  COGNIZANT_ROOT:
+    legal_name: "Cognizant Technology Solutions Corporation"
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, IN_DPDP]
+    tier: 0
+    stock_ticker: "CTSH"
+    note: >
+      Delaware-incorporated, Teaneck NJ HQ — but ~75% of workforce
+      located in India (largest operational base globally). Cognizant
+      Technology Solutions India Pvt Ltd handles the bulk of service
+      delivery. IN_DPDP added as exception tag due to major IN operational
+      presence processing customer data at scale.
+    maxmind_patterns:
+      - "COGNIZANT"
+      - "COGNIZANT-TECHNOLOGY"
+      - "CTSH"
+
+  # ============================================================================
+  # ============================================================================
+  # ISRAELI ENTITIES (IL_NSL)
+  # ============================================================================
+  # ============================================================================
+  # Note: additional IL_NSL exception tags already applied in earlier parts on:
+  #   - WIZ (tier-1 under GOOGL_ROOT)
+  #   - SENTINELONE_ROOT (tier-0 US with IL origins)
+  #   - VARONIS_ROOT (tier-0 US with IL R&D)
+  #   - ZERTO (tier-1 under HPE_ROOT)
+  #   - MELLANOX (tier-1 under NVIDIA_ROOT)
+  #   - MOBILEYE (tier-1 under INTEL_ROOT)
+  # ============================================================================
+  # ============================================================================
+
+  CHECKPOINT_ROOT:
+    legal_name: "Check Point Software Technologies Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    stock_ticker: "CHKP"
+    note: >
+      Founded Tel Aviv 1993 by Unit 8200 alumni Gil Shwed, Shlomo Kramer,
+      and Marius Nacht. Firewall/VPN/endpoint/cloud security (Infinity
+      platform, Harmony, CloudGuard, Quantum). Cloud management plane
+      processes customer security telemetry.
+    maxmind_patterns:
+      - "CHECKPOINT"
+      - "CHECK-POINT"
+      - "CHECK POINT"
+      - "CHECKPOINT-SW"
+
+  CYBERARK_ROOT:
+    legal_name: "CyberArk Software Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    stock_ticker: "CYBR"
+    note: >
+      Privileged Access Management (PAM) leader. HQ Petah Tikva, IL.
+      Announced acquisition by Palo Alto Networks 2025-07 for ~$25B —
+      deal PENDING regulatory approvals, expected close 2026.
+      MONITOR for M&A closure — once closed, restructure as tier-1
+      under PANW_ROOT with IL_NSL as exception tag.
+    maxmind_patterns:
+      - "CYBERARK"
+      - "CYBER-ARK"
+
+  RADWARE_ROOT:
+    legal_name: "Radware Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    stock_ticker: "RDWR"
+    note: "DDoS mitigation, application delivery, WAF — cloud-managed services"
+    maxmind_patterns:
+      - "RADWARE"
+      - "RADWARE-LTD"
+
+  NICE_ROOT:
+    legal_name: "NICE Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    stock_ticker: "NICE"
+    note: >
+      Customer experience and compliance software. NICE Actimize handles
+      financial crime and fraud analytics — heavy telemetry aggregation.
+      Historical ties to SIGINT tech — legacy intercept product line
+      spun off in 2015 as Nexidia.
+    maxmind_patterns:
+      - "NICE"
+      - "NICE-LTD"
+      - "NICE-SYSTEMS"
+
+  FORTER_ROOT:
+    legal_name: "Forter Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    note: "Fraud prevention — private company, founded Tel Aviv 2013, HQ New York + Tel Aviv"
+    maxmind_patterns:
+      - "FORTER"
+
+  CELLEBRITE_ROOT:
+    legal_name: "Cellebrite DI Ltd."
+    country_of_incorporation: "IL"
+    jurisdiction_tags: [IL_NSL]
+    tier: 0
+    stock_ticker: "CLBT"
+    note: >
+      Mobile forensics vendor — UFED product for device data extraction.
+      Controversial due to alleged use by authoritarian regimes; NGO
+      documentation of misuse against journalists and activists. Listed
+      on NASDAQ via SPAC 2021. Subject to Israeli Defense Export Control
+      Act (DECA) for cyber-capability exports.
+    maxmind_patterns:
+      - "CELLEBRITE"
+
+  # ============================================================================
+  # ============================================================================
+  # KOREAN ENTITIES (KR_PIPA)
+  # ============================================================================
+  # ============================================================================
+
+  SAMSUNG_ELECTRONICS_ROOT:
+    legal_name: "Samsung Electronics Co., Ltd."
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "005930.KS"
+    note: >
+      Korea's largest conglomerate — consumer electronics, semiconductors,
+      displays, mobile. Samsung Cloud and Samsung SmartThings generate
+      significant telemetry.
+    maxmind_patterns:
+      - "SAMSUNG"
+      - "SAMSUNG-ELECTRONICS"
+      - "SAMSUNGELEC"
+
+  SAMSUNG_SDS:
+    legal_name: "Samsung SDS Co., Ltd."
+    country_of_incorporation: "KR"
+    parent: SAMSUNG_ELECTRONICS_ROOT
+    tier: 1
+    stock_ticker: "018260.KS"
+    note: "IT services, cloud, SCM — primary enterprise data handling arm"
+    maxmind_patterns:
+      - "SAMSUNG-SDS"
+      - "SAMSUNGSDS"
+
+  KT_ROOT:
+    legal_name: "KT Corporation"
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "KT"
+    note: "Formerly Korea Telecom — largest fixed-line carrier; substantial mobile presence"
+    asn_list: [4766, 4264]
+    maxmind_patterns:
+      - "KT-KR"
+      - "KORNET"
+      - "KIXS-AS-KR"
+      - "KT CORPORATION"
+
+  SKT_ROOT:
+    legal_name: "SK Telecom Co., Ltd."
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "SKM"
+    note: "Largest Korean mobile operator. Part of SK Group."
+    asn_list: [9318, 4817]
+    maxmind_patterns:
+      - "SK-TELECOM"
+      - "SKTELECOM"
+      - "SK TELECOM"
+      - "SKBROADBAND"
+
+  LG_UPLUS_ROOT:
+    legal_name: "LG U+ Corp."
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "032640.KS"
+    note: "Third Korean mobile carrier, part of LG Group"
+    asn_list: [17858, 3786]
+    maxmind_patterns:
+      - "LGUPLUS"
+      - "LG-UPLUS"
+      - "LG DACOM"
+      - "DACOM"
+
+  NAVER_ROOT:
+    legal_name: "Naver Corporation"
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "035420.KS"
+    note: "Korea's dominant search engine; also cloud, content, commerce"
+    asn_list: [23576, 38099]
+    maxmind_patterns:
+      - "NAVER"
+      - "NAVER-CORP"
+      - "NAVERCLOUD"
+
+  KAKAO_ROOT:
+    legal_name: "Kakao Corporation"
+    country_of_incorporation: "KR"
+    jurisdiction_tags: [KR_PIPA]
+    tier: 0
+    stock_ticker: "035720.KS"
+    note: "KakaoTalk messenger, Kakao Pay, Kakao Mobility, Kakao Games"
+    asn_list: [45013]
+    maxmind_patterns:
+      - "KAKAO"
+      - "KAKAOCORP"
+      - "KAKAO-CORP"
+
+  COUPANG_ROOT:
+    legal_name: "Coupang, Inc."
+    country_of_incorporation: "US"
+    jurisdiction_tags: [US_CLOUD_ACT, KR_PIPA]
+    tier: 0
+    stock_ticker: "CPNG"
+    note: >
+      Delaware-incorporated, Seattle HQ — but operations and majority
+      workforce in South Korea via Coupang Corp. (KR operating entity).
+      Korea's largest e-commerce platform. KR_PIPA exception tag applied
+      due to KR operational footprint handling KR customer data at scale.
+    maxmind_patterns:
+      - "COUPANG"
+      - "COUPANG-CORP"
+
+  # ============================================================================
+  # ============================================================================
+  # AUSTRALIAN ENTITIES (AU_TOLA)
+  # ============================================================================
+  # ============================================================================
+
+  TELSTRA_ROOT:
+    legal_name: "Telstra Group Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    stock_ticker: "TLS.AX"
+    note: "Australia's incumbent telecommunications operator"
+    asn_list: [1221, 4637, 4804]
+    maxmind_patterns:
+      - "TELSTRA"
+      - "TELSTRA-AS"
+      - "TELSTRA-INTERNET"
+
+  OPTUS_ROOT:
+    legal_name: "Singtel Optus Pty Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    note: >
+      Wholly owned by Singtel (Singapore Telecommunications Limited, SG).
+      Singtel itself not modeled (SG is not in the tagged-jurisdiction
+      scope). Optus is AU-incorporated — AU_TOLA applies as tier-0
+      standalone. Second-largest AU mobile operator.
+    asn_list: [4804, 7474]
+    maxmind_patterns:
+      - "OPTUS"
+      - "OPTUS-AS"
+      - "OPTUS-ADSL"
+
+  TPG_TELECOM_ROOT:
+    legal_name: "TPG Telecom Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    stock_ticker: "TPG.AX"
+    note: >
+      Formed 2020-07 via merger of TPG Telecom and Vodafone Hutchison
+      Australia. Third-largest AU mobile carrier + significant fixed
+      broadband presence.
+    asn_list: [7545, 4854, 133612]
+    maxmind_patterns:
+      - "TPG"
+      - "TPG-INTERNET"
+      - "TPG TELECOM"
+      - "VODAFONE-AU"
+
+  VOCUS_ROOT:
+    legal_name: "Vocus Group Pty Ltd"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    note: >
+      Private since 2021. Fibre infrastructure and wholesale carrier.
+      Owned by Macquarie Infrastructure & Real Assets + Aware Super
+      (both AU institutional investors).
+    asn_list: [4826, 9443]
+    maxmind_patterns:
+      - "VOCUS"
+      - "VOCUS-COMMS"
+
+  MACQUARIE_TELECOM:
+    legal_name: "Macquarie Telecom Group Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    stock_ticker: "MAQ.AX"
+    note: "Business-focused telco; data centers (Macquarie Data Centres); Canberra-government focus"
+    asn_list: [4739, 18371]
+    maxmind_patterns:
+      - "MACQUARIE-TELECOM"
+      - "MACQUARIETELECOM"
+
+  SUPERLOOP_ROOT:
+    legal_name: "Superloop Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    stock_ticker: "SLC.AX"
+    note: "Fibre network operator — AU primary, SG + HK PoPs"
+    asn_list: [38195]
+    maxmind_patterns:
+      - "SUPERLOOP"
+
+  AUSSIE_BROADBAND:
+    legal_name: "Aussie Broadband Limited"
+    country_of_incorporation: "AU"
+    jurisdiction_tags: [AU_TOLA]
+    tier: 0
+    stock_ticker: "ABB.AX"
+    note: "Fast-growing AU ISP; significant consumer + business broadband"
+    asn_list: [4764]
+    maxmind_patterns:
+      - "AUSSIE-BROADBAND"
+      - "AUSSIEBB"
+
+# ==============================================================================
+# END OF ENTITIES
+# ==============================================================================

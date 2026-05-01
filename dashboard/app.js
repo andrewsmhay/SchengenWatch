@@ -170,6 +170,27 @@ function categoryBadge(cat, iso) {
   return `<span class="badge badge-unknown">${iso || 'Unknown'}</span>`;
 }
 
+const JURISDICTION_COLORS = {
+  US_CLOUD_ACT: { bg: '#f59e0b22', text: '#f59e0b', border: '#f59e0b44' },
+  US_FISA_702:  { bg: '#ef444422', text: '#ef4444', border: '#ef444444' },
+  CN_NSL:       { bg: '#dc262622', text: '#dc2626', border: '#dc262644' },
+  UK_IPA:       { bg: '#8b5cf622', text: '#8b5cf6', border: '#8b5cf644' },
+};
+
+function jurisdictionBadges(tags) {
+  if (!tags || tags.length === 0) return '<span class="text-muted">—</span>';
+  return tags.map(tag => {
+    const c = JURISDICTION_COLORS[tag] || { bg: '#6b728022', text: '#6b7280', border: '#6b728044' };
+    return `<span class="badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};font-size:10px;white-space:nowrap">${tag}</span>`;
+  }).join(' ');
+}
+
+function orgCell(org, asn) {
+  if (!org && !asn) return '<span class="text-muted">—</span>';
+  const asnPart = asn ? `<span class="text-muted"> AS${asn}</span>` : '';
+  return `<span class="mono" style="font-size:var(--text-xs)">${org || ''}${asnPart}</span>`;
+}
+
 function protoBadge(proto) {
   if (!proto) return '—';
   const p = proto.toUpperCase();
@@ -387,6 +408,8 @@ async function loadOverview() {
         <td class="mono">${r.dst_port}</td>
         <td>${protoBadge(r.protocol)}</td>
         <td>${r.dst_country_name || '—'}</td>
+        <td>${orgCell(r.org_name, r.asn)}</td>
+        <td>${jurisdictionBadges(r.jurisdiction_tags)}</td>
         <td>${categoryBadge(cat, r.dst_country_iso)}</td>
         <td class="num-col mono">${fmt(r.count)}</td>
         <td class="text-muted" style="font-size:var(--text-xs)">${fmtDate(r.first_seen)}</td>
@@ -538,6 +561,8 @@ async function loadRecent() {
         <td class="mono">${r.dst_port}</td>
         <td>${protoBadge(r.protocol)}</td>
         <td>${r.dst_country_name || '—'}</td>
+        <td>${orgCell(r.org_name, r.asn)}</td>
+        <td>${jurisdictionBadges(r.jurisdiction_tags)}</td>
         <td>${categoryBadge(cat, r.dst_country_iso)}</td>
         <td class="num-col mono">${fmt(r.count)}</td>
         <td class="text-muted" style="font-size:var(--text-xs)">${fmtDate(r.last_seen)}</td>
@@ -562,8 +587,21 @@ async function loadSettings() {
     hEl.className   = `health-value ${h.status === 'ok' ? 'health-ok' : 'health-warn'}`;
 
     const mmdb = $('#mmdb-status');
-    mmdb.textContent = h.mmdb ? 'GeoLite2 loaded' : 'MMDB not found';
+    mmdb.textContent = h.mmdb ? 'GeoLite2-Country loaded' : 'MMDB not found';
     mmdb.className   = `health-value ${h.mmdb ? 'health-ok' : 'health-err'}`;
+
+    const mmdbAsn = $('#mmdb-asn-status');
+    if (mmdbAsn) {
+      mmdbAsn.textContent = h.mmdb_asn ? 'GeoLite2-ASN loaded' : 'ASN MMDB not found';
+      mmdbAsn.className   = `health-value ${h.mmdb_asn ? 'health-ok' : 'health-err'}`;
+    }
+
+    const jEntries = $('#jurisdiction-entries');
+    if (jEntries) {
+      const n = h.jurisdiction_entries ?? 0;
+      jEntries.textContent = n > 0 ? `${n} ASNs mapped` : 'No data (check classification dir)';
+      jEntries.className   = `health-value ${n > 0 ? 'health-ok' : 'health-warn'}`;
+    }
   } catch (err) {
     const hEl = $('#health-value');
     hEl.textContent = `Unreachable — ${err.message}`;
@@ -684,13 +722,14 @@ function renderTable(tbodySelector, rows, rowFn) {
 }
 
 function flowRow(r) {
-  const cat = classifyLocal(r.dst_country_iso, r.category);
   return `
     <td class="mono">${r.src_ip}</td>
     <td class="mono">${r.dst_ip}</td>
     <td class="mono">${r.dst_port}</td>
     <td>${protoBadge(r.protocol)}</td>
     <td>${r.dst_country_name || '—'}</td>
+    <td>${orgCell(r.org_name, r.asn)}</td>
+    <td>${jurisdictionBadges(r.jurisdiction_tags)}</td>
     <td class="num-col mono">${fmt(r.count)}</td>
     <td class="text-muted" style="font-size:var(--text-xs)">${fmtDate(r.first_seen)}</td>
     <td class="text-muted" style="font-size:var(--text-xs)">${fmtDate(r.last_seen)}</td>
